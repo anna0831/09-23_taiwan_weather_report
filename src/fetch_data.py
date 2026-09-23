@@ -274,6 +274,12 @@ def sync_cwa_to_db(api_key: Optional[str] = None, db_path: Optional[Path] = None
         return False, str(e), 0
 
 
+# 相容性函式別名 (提供 Vercel API 與各版本匯入)
+fetch_cwa_forecast = fetch_cwa_json
+parse_forecast_json = parse_weather_json
+
+
+
 if __name__ == "__main__":
     print("正在連線 CWA 天氣開放資料 API...")
     success, msg, count = sync_cwa_to_db()

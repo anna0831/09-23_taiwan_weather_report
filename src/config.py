@@ -9,9 +9,25 @@ from pathlib import Path
 # 專案根目錄
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# 資料庫路徑 (支援 data/data.db)
+# 資料庫路徑 (支援本機 data/data.db 與 Vercel Serverless /tmp/data.db)
 DATA_DIR = BASE_DIR / "data"
-DB_PATH = DATA_DIR / "data.db"
+
+def get_db_path() -> Path:
+    """取得 SQLite 資料庫路徑。在 Vercel 唯讀無伺服器環境下自動使用 /tmp/data.db。"""
+    default_db = DATA_DIR / "data.db"
+    if os.environ.get("VERCEL") or "/var/task" in str(BASE_DIR):
+        tmp_db = Path("/tmp/data.db")
+        if not tmp_db.exists() and default_db.exists():
+            import shutil
+            try:
+                shutil.copyfile(default_db, tmp_db)
+            except Exception:
+                pass
+        return tmp_db
+    return default_db
+
+DB_PATH = get_db_path()
+
 
 
 def load_env_file(env_path: Path = None):

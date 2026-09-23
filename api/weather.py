@@ -155,17 +155,15 @@ class handler(BaseHTTPRequestHandler):
         sync_result = None
         if sync_requested:
             try:
-                from src.fetch_data import fetch_cwa_forecast, parse_forecast_json
-                from src.db import save_forecasts
-                cwa_json = fetch_cwa_forecast()
-                if cwa_json:
-                    df = parse_forecast_json(cwa_json)
-                    saved = save_forecasts(df)
+                from src.fetch_data import sync_cwa_to_db
+                success, msg, saved = sync_cwa_to_db()
+                if success:
                     sync_result = f"已成功更新 {saved} 筆氣象資料"
                 else:
-                    sync_result = "無法從 CWA 取得資料，已保留現有資料"
+                    sync_result = f"同步提醒: {msg}"
             except Exception as e:
                 sync_result = f"同步發生錯誤: {str(e)}"
+
 
         try:
             payload = get_weather_payload(region)
