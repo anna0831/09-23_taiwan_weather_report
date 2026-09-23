@@ -1,20 +1,19 @@
-"""單元與功能整合測試。
+"""單元與功能整合測試 (離線驗證，不依賴外部網路與真實 API Key)。
 
 驗證項目：
-1. SQLite 資料庫初始化與資料表建立
-2. 參數化 SQL 查詢
-3. 重複匯入更新 (UPSERT) 機制驗證 (避免重複資料)
-4. CWA JSON 結構解析邏輯 (MinT, MaxT, 日期整合)
-5. 溫度顏色區間判定邏輯
-6. 地理座標對應與 Folium 標記生成
+1. SQLite 資料庫初始化與資料表結構
+2. 參數化 SQL 查詢與防 SQL Injection
+3. 重複匯入更新 (UPSERT) 機制 (避免重複資料)
+4. CWA JSON 結構解析邏輯 (MinT, MaxT, 跨日時段與多日彙整)
+5. JSON 異常與邊界值容錯處理 (缺少元素、非數值字串等)
+6. 無 API Key 呼叫 sync_cwa_to_db 之優雅防呆回應
+7. 溫度顏色區間判定邏輯 (<20, 20-25, 25-30, >30)
+8. 地理座標對應與 Folium 標記產製
 """
 
-import os
 import tempfile
 import unittest
 from pathlib import Path
-import pandas as pd
-import folium
 
 from src.config import get_temp_color, REGION_COORDINATES
 from src.db import (
@@ -27,7 +26,8 @@ from src.db import (
     seed_mock_data,
     get_connection,
 )
-from src.fetch_data import parse_weather_json
+from src.fetch_data import parse_weather_json, sync_cwa_to_db
+import folium
 
 
 class TestWeatherApp(unittest.TestCase):
@@ -53,7 +53,7 @@ class TestWeatherApp(unittest.TestCase):
         conn.close()
 
     def test_save_and_upsert_logic(self):
-        """測試重複匯入時更新原紀錄，避免重複資料 (約束測試)。"""
+        """測試重複匯入時更新原紀錄，避免重複資料 (UPSERT 驗證)。"""
         init_db(self.test_db_path)
 
         data_initial = [
@@ -106,6 +106,10 @@ class TestWeatherApp(unittest.TestCase):
         self.assertEqual(len(df_central), 7)
         self.assertTrue(all(df_central["regionName"] == "中部地區"))
 
+        # 測試防 SQL Injection
+        df_malicious = get_forecasts_by_region("中部地區' OR '1'='1", self.test_db_path)
+        self.assertTrue(df_malicious.empty)
+
         # 測試依日期查詢
         dates = get_distinct_dates(self.test_db_path)
         self.assertIn("2026-04-14", dates)
@@ -114,16 +118,18 @@ class TestWeatherApp(unittest.TestCase):
         self.assertEqual(len(df_date), 6)  # 6 個預設地區
 
     def test_temp_color_mapping(self):
-        """測試溫度分級顏色規則 (圖二 Step 17)。"""
+        """測試溫度分級顏色規則。"""
         self.assertEqual(get_temp_color(18.0), "blue")    # < 20
+        self.assertEqual(get_temp_color(19.9), "blue")    # < 20
         self.assertEqual(get_temp_color(20.0), "green")   # 20 - 25
         self.assertEqual(get_temp_color(25.0), "green")   # 20 - 25
-        self.assertEqual(get_temp_color(27.5), "orange")  # 25 - 30
+        self.assertEqual(get_temp_color(25.1), "orange")  # 25 - 30
         self.assertEqual(get_temp_color(30.0), "orange")  # 25 - 30
-        self.assertEqual(get_temp_color(31.5), "red")     # > 30
+        self.assertEqual(get_temp_color(30.1), "red")     # > 30
+        self.assertEqual(get_temp_color(35.0), "red")     # > 30
 
-    def test_cwa_json_parser(self):
-        """測試 JSON 解析模組對 CWA 階層結構之提取與彙整。"""
+    def test_cwa_json_parser_standard(self):
+        """測試 JSON 解析模組對標準 CWA 結構之提取與跨日時段彙整。"""
         sample_cwa_json = {
             "records": {
                 "location": [
@@ -143,6 +149,11 @@ class TestWeatherApp(unittest.TestCase):
                                         "endTime": "2026-04-15 06:00:00",
                                         "parameter": {"parameterName": "18", "parameterUnit": "C"},
                                     },
+                                    {
+                                        "startTime": "2026-04-15 06:00:00",
+                                        "endTime": "2026-04-15 18:00:00",
+                                        "parameter": {"parameterName": "20", "parameterUnit": "C"},
+                                    },
                                 ],
                             },
                             {
@@ -158,6 +169,11 @@ class TestWeatherApp(unittest.TestCase):
                                         "endTime": "2026-04-15 06:00:00",
                                         "parameter": {"parameterName": "24", "parameterUnit": "C"},
                                     },
+                                    {
+                                        "startTime": "2026-04-15 06:00:00",
+                                        "endTime": "2026-04-15 18:00:00",
+                                        "parameter": {"parameterName": "28", "parameterUnit": "C"},
+                                    },
                                 ],
                             },
                         ],
@@ -167,11 +183,52 @@ class TestWeatherApp(unittest.TestCase):
         }
 
         df = parse_weather_json(sample_cwa_json)
-        self.assertEqual(len(df), 1)
-        self.assertEqual(df.iloc[0]["regionName"], "北部地區")
-        self.assertEqual(df.iloc[0]["dataDate"], "2026-04-14")
-        self.assertEqual(df.iloc[0]["mint"], 18.0)  # min(19, 18)
-        self.assertEqual(df.iloc[0]["maxt"], 26.0)  # max(26, 24)
+        self.assertEqual(len(df), 2)  # 2026-04-14, 2026-04-15
+        
+        day1 = df[df["dataDate"] == "2026-04-14"].iloc[0]
+        self.assertEqual(day1["regionName"], "北部地區")
+        self.assertEqual(day1["mint"], 18.0)  # min(19, 18)
+        self.assertEqual(day1["maxt"], 26.0)  # max(26, 24)
+
+        day2 = df[df["dataDate"] == "2026-04-15"].iloc[0]
+        self.assertEqual(day2["mint"], 20.0)
+        self.assertEqual(day2["maxt"], 28.0)
+
+    def test_cwa_json_parser_edge_cases(self):
+        """測試 JSON 解析容錯性：空資料、缺少元素、無效數值字串。"""
+        # 空記錄
+        df_empty = parse_weather_json({})
+        self.assertTrue(df_empty.empty)
+
+        # 包含缺少 MinT/MaxT 或格式異常
+        corrupted_json = {
+            "records": {
+                "location": [
+                    {
+                        "locationName": "測試地區",
+                        "weatherElement": [
+                            {
+                                "elementName": "Wx",  # 非溫度要素
+                                "time": [{"startTime": "2026-04-14 06:00:00", "parameter": {"parameterName": "晴天"}}],
+                            },
+                            {
+                                "elementName": "MinT",
+                                "time": [{"startTime": "2026-04-14 06:00:00", "parameter": {"parameterName": "N/A"}}],  # 無效數值
+                            },
+                        ],
+                    }
+                ]
+            }
+        }
+        df_corrupted = parse_weather_json(corrupted_json)
+        self.assertTrue(df_corrupted.empty)
+
+    def test_sync_cwa_to_db_without_api_key(self):
+        """測試未設定 API Key 時，sync_cwa_to_db 會回傳錯誤訊息而非崩潰。"""
+        success, msg, count = sync_cwa_to_db(api_key="", db_path=self.test_db_path)
+        self.assertFalse(success)
+        self.assertEqual(count, 0)
+        self.assertIn("未設定 CWA API Key", msg)
 
     def test_folium_map_generation(self):
         """測試 Folium 地圖標記產製與屬性。"""
@@ -187,7 +244,6 @@ class TestWeatherApp(unittest.TestCase):
                 popup=f"{r_name} Min: 20 Max: 28",
             ).add_to(m)
 
-        # 確保能成功輸出 HTML 字串
         html_output = m.get_root().render()
         self.assertIn("北部地區", html_output)
         self.assertIn("中部地區", html_output)
