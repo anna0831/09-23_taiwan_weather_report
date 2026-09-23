@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="全台即時氣象大數據儀表板 - 飛天小女警 The Powerpuff Girls 特派氣象站！提供台灣 22 縣市及分區 7 天天氣預測、雙色溫差折線圖與互動地圖。">
+  <title>Taiwan Weather Forecast · 飛天小女警特派氣象站 💖</title>
+  
+  <!-- Favicon with normal weather icon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⛅</text></svg>">
+  
+  <!-- Google Fonts: Fredoka (Rounded Bubbly Pop) + Noto Sans TC -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet CSS for Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  
+  <!-- Application CSS (The Powerpuff Girls Theme) -->
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="ppg-theme">
+  <!-- Decorative Floating Hearts/Stars (Powerpuff Girls Magic) -->
+  <div class="heart-bg-pattern" aria-hidden="true"></div>
+
+  <div class="app-container">
+    <!-- Header / Hero Section (The Powerpuff Girls Edition) -->
+    <header class="hero-header ppg-hero" id="hero-header">
+      <div class="hero-left">
+        <div class="brand-badge-group">
+          <span class="ppg-badge ppg-blossom-badge">🌸 花花 Blossom</span>
+          <span class="ppg-badge ppg-bubbles-badge">🫧 泡泡 Bubbles</span>
+          <span class="ppg-badge ppg-buttercup-badge">⚡ 毛毛 Buttercup</span>
+        </div>
+        <h1 class="hero-title">
+          <span class="weather-icon-normal" id="header-icon">⛅</span>
+          <span class="hero-title-text">Taiwan Weather Forecast</span>
+        </h1>
+        <p class="hero-subtitle">
+          💖 飛天小女警特派氣象站 · 糖、香料與一切美好事物 · 為您擊退壞天氣！✨
+        </p>
+      </div>
+
+      <div class="hero-right">
+        <div class="sync-status-card ppg-card-pop">
+          <div class="pulse-indicator">
+            <span class="pulse-dot"></span>
+            <span class="status-text">⚡ 活力守護中 (Active)</span>
+          </div>
+          <div class="sync-time" id="last-sync-time">最後同步時間：載入中...</div>
+          <button class="sync-btn ppg-btn" id="manual-sync-btn" title="立即連線氣象署更新資料">
+            <span class="sync-btn-icon" id="sync-icon">🔄</span>
+            <span class="sync-btn-text">立即同步</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Control Bar: Region selection & fast pills -->
+    <section class="control-bar ppg-panel" id="control-bar">
+      <div class="region-select-group">
+        <label for="region-select" class="control-label">📍 選擇特派觀測地區：</label>
+        <div class="custom-select-wrapper">
+          <select id="region-select" class="custom-select">
+            <option value="">載入地區清單中...</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="quick-pills" id="quick-pills">
+        <span class="quick-pills-label">✨ 熱門巡邏點：</span>
+        <button class="pill-btn active" data-region="臺北市">🌸 臺北市</button>
+        <button class="pill-btn" data-region="新北市">🫧 新北市</button>
+        <button class="pill-btn" data-region="臺中市">⚡ 臺中市</button>
+        <button class="pill-btn" data-region="高雄市">💖 高雄市</button>
+        <button class="pill-btn" data-region="北部地區">北部地區</button>
+        <button class="pill-btn" data-region="中部地區">中部地區</button>
+        <button class="pill-btn" data-region="南部地區">南部地區</button>
+      </div>
+    </section>
+
+    <!-- Top Key Metrics Cards (Powerpuff Girls Themed) -->
+    <section class="metrics-grid" id="metrics-grid">
+      <!-- 1. 當前均溫 -->
+      <div class="metric-card ppg-panel card-bubbles">
+        <div class="metric-icon-wrap icon-avg">🌡️</div>
+        <div class="metric-details">
+          <span class="metric-label">當前地區均溫</span>
+          <div class="metric-value-wrap">
+            <span class="metric-value" id="metric-avg">--</span>
+            <span class="metric-unit">°C</span>
+          </div>
+          <span class="metric-desc" id="metric-region-tag">臺北市</span>
+        </div>
+      </div>
+
+      <!-- 2. 一週最高溫 (Blossom) -->
+      <div class="metric-card ppg-panel card-blossom">
+        <div class="metric-icon-wrap icon-high">🌸</div>
+        <div class="metric-details">
+          <span class="metric-label">花花推薦 · 一週最高溫</span>
+          <div class="metric-value-wrap">
+            <span class="metric-value text-high" id="metric-max">--</span>
+            <span class="metric-unit">°C</span>
+          </div>
+          <span class="metric-desc" id="metric-max-date">--</span>
+        </div>
+      </div>
+
+      <!-- 3. 一週最低溫 (Bubbles) -->
+      <div class="metric-card ppg-panel card-bubbles-low">
+        <div class="metric-icon-wrap icon-low">🫧</div>
+        <div class="metric-details">
+          <span class="metric-label">泡泡提醒 · 一週最低溫</span>
+          <div class="metric-value-wrap">
+            <span class="metric-value text-low" id="metric-min">--</span>
+            <span class="metric-unit">°C</span>
+          </div>
+          <span class="metric-desc" id="metric-min-date">--</span>
+        </div>
+      </div>
+
+      <!-- 4. 最大溫差 (Buttercup) -->
+      <div class="metric-card ppg-panel card-buttercup">
+        <div class="metric-icon-wrap icon-diff">⚡</div>
+        <div class="metric-details">
+          <span class="metric-label">毛毛把關 · 最大溫差</span>
+          <div class="metric-value-wrap">
+            <span class="metric-value text-diff" id="metric-diff">--</span>
+            <span class="metric-unit">°C</span>
+          </div>
+          <span class="metric-desc">小心著涼，充滿活力！</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7-Day Forecast Carousel / Cards -->
+    <section class="forecast-section">
+      <div class="section-header">
+        <h2 class="section-title">📅 <span id="forecast-region-name">臺北市</span> · 未來 7 天特派氣象預測</h2>
+        <span class="section-hint">💖 每日氣溫一目了然，絕不遮擋</span>
+      </div>
+      <div class="forecast-cards-container" id="forecast-cards">
+        <!-- Rendered via JS -->
+      </div>
+    </section>
+
+    <!-- Main Content: Chart & Map Side-by-Side -->
+    <main class="dashboard-main-grid">
+      <!-- Chart Card -->
+      <section class="chart-container ppg-panel">
+        <div class="card-header-flex">
+          <div>
+            <h2 class="card-title">📈 氣溫高低雙色曲線圖</h2>
+            <p class="card-subtitle">🌸 花花粉紅 (最高溫) · 🫧 泡泡晴空藍 (最低溫)</p>
+          </div>
+          <div class="chart-legend-custom">
+            <span class="legend-badge legend-max"><span class="legend-dot max-dot"></span> 最高溫 (MaxT)</span>
+            <span class="legend-badge legend-min"><span class="legend-dot min-dot"></span> 最低溫 (MinT)</span>
+          </div>
+        </div>
+        <div class="canvas-wrapper">
+          <canvas id="tempChart"></canvas>
+        </div>
+      </section>
+
+      <!-- Map Card -->
+      <section class="map-container ppg-panel">
+        <div class="card-header-flex">
+          <div>
+            <h2 class="card-title">🗺️ 全台巡邏氣象地圖 (無浮水印)</h2>
+            <p class="card-subtitle">點擊小女警糖果氣溫標籤，立即切換地區觀測</p>
+          </div>
+          <div class="map-legend">
+            <span class="temp-legend-item"><span class="color-badge blue"></span>&lt;20°C 涼爽</span>
+            <span class="temp-legend-item"><span class="color-badge green"></span>20~24°C 舒適</span>
+            <span class="temp-legend-item"><span class="color-badge orange"></span>25~29°C 溫暖</span>
+            <span class="temp-legend-item"><span class="color-badge red"></span>≥30°C 炎熱</span>
+          </div>
+        </div>
+        <!-- Clean OpenStreetMap without Carto API Key watermark -->
+        <div id="taiwan-map" class="map-view"></div>
+      </section>
+    </main>
+
+    <!-- Detailed Forecast Data Table -->
+    <section class="table-section ppg-panel">
+      <div class="card-header-flex">
+        <div>
+          <h2 class="card-title">📋 特派預測詳細資料表</h2>
+          <p class="card-subtitle">清楚條列各日最低溫、最高溫與溫差指標</p>
+        </div>
+        <div class="table-actions">
+          <input type="text" id="table-search" placeholder="🔍 搜尋日期、氣溫或地區..." class="table-search-input">
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="weather-table" id="weather-table">
+          <thead>
+            <tr>
+              <th>觀測地區</th>
+              <th>預測日期</th>
+              <th>星期</th>
+              <th>最低溫 (MinT)</th>
+              <th>最高溫 (MaxT)</th>
+              <th>平均氣溫</th>
+              <th>溫差</th>
+              <th>小女警天氣報告</th>
+            </tr>
+          </thead>
+          <tbody id="table-body">
+            <!-- Rendered via JS -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <div class="footer-content">
+        <p>💖 <strong>The Powerpuff Girls Weather Station</strong> · 飛天小女警為您守護台灣好天氣 ⛅</p>
+        <p class="footer-sub">資料來源：中央氣象署 CWA Open Data · 託管於 Vercel Serverless · 無伺服器極速回應架構</p>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Notification Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- Application JS -->
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -112,9 +112,9 @@ class TestWeatherApp(unittest.TestCase):
 
         # 測試依日期查詢
         dates = get_distinct_dates(self.test_db_path)
-        self.assertIn("2026-04-14", dates)
+        self.assertIn("2026-09-21", dates)
 
-        df_date = get_forecasts_by_date("2026-04-14", self.test_db_path)
+        df_date = get_forecasts_by_date("2026-09-21", self.test_db_path)
         self.assertEqual(len(df_date), 6)  # 6 個預設地區
 
     def test_temp_color_mapping(self):

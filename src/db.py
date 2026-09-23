@@ -24,17 +24,7 @@ def get_connection(db_path: Optional[Path] = None) -> sqlite3.Connection:
 
 
 def init_db(db_path: Optional[Path] = None) -> None:
-    """初始化資料庫與建立 TemperatureForecasts 資料表。
-    
-    資料表結構依據課程圖二 Step 9：
-    - id: INTEGER PRIMARY KEY AUTOINCREMENT
-    - regionName: TEXT
-    - dataDate: TEXT
-    - mint: REAL
-    - maxt: REAL
-    
-    加上 UNIQUE(regionName, dataDate) 以確保相同地區與日期重複匯入時能安全更新。
-    """
+    """初始化資料庫與建立 TemperatureForecasts 及 SyncMetadata 資料表。"""
     conn = get_connection(db_path)
     cursor = conn.cursor()
     
@@ -48,9 +38,41 @@ def init_db(db_path: Optional[Path] = None) -> None:
         CONSTRAINT uq_region_date UNIQUE (regionName, dataDate)
     );
     """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS SyncMetadata (
+        metaKey TEXT PRIMARY KEY,
+        metaValue TEXT NOT NULL
+    );
+    """)
     
     conn.commit()
     conn.close()
+
+
+def set_metadata(key: str, value: str, db_path: Optional[Path] = None) -> None:
+    """儲存或更新系統詮釋資料 (如上次更新時間)。"""
+    init_db(db_path)
+    conn = get_connection(db_path)
+    cursor = conn.cursor()
+    cursor.execute("""
+    INSERT INTO SyncMetadata (metaKey, metaValue)
+    VALUES (?, ?)
+    ON CONFLICT(metaKey) DO UPDATE SET metaValue = excluded.metaValue;
+    """, (key, str(value)))
+    conn.commit()
+    conn.close()
+
+
+def get_metadata(key: str, default: Optional[str] = None, db_path: Optional[Path] = None) -> Optional[str]:
+    """讀取系統詮釋資料。"""
+    init_db(db_path)
+    conn = get_connection(db_path)
+    cursor = conn.cursor()
+    cursor.execute("SELECT metaValue FROM SyncMetadata WHERE metaKey = ?;", (key,))
+    row = cursor.fetchone()
+    conn.close()
+    return row["metaValue"] if row else default
 
 
 def save_forecasts(data: Any, db_path: Optional[Path] = None) -> int:
@@ -101,6 +123,11 @@ def save_forecasts(data: Any, db_path: Optional[Path] = None) -> int:
     conn.commit()
     affected = len(params)
     conn.close()
+
+    # 自動記錄最後同步時間
+    from datetime import datetime
+    set_metadata("last_sync_time", datetime.now().strftime("%Y-%m-%d %H:%M:%S"), db_path)
+
     return affected
 
 
@@ -163,66 +190,81 @@ def get_forecasts_by_date(data_date: str, db_path: Optional[Path] = None) -> pd.
     return df
 
 
+def get_all_forecasts(db_path: Optional[Path] = None) -> pd.DataFrame:
+    """查詢所有預報資料，依 regionName, dataDate 排序。"""
+    init_db(db_path)
+    conn = get_connection(db_path)
+    query = """
+    SELECT regionName, dataDate, mint, maxt
+    FROM TemperatureForecasts
+    ORDER BY regionName ASC, dataDate ASC;
+    """
+    df = pd.read_sql_query(query, conn)
+    conn.close()
+    return df
+
+
+
 def seed_mock_data(db_path: Optional[Path] = None) -> int:
-    """建立符合課程圖片範例的種子預報資料。
+    """建立 2026-09-21 至 2026-09-27 一週示範預報資料。
     
     用於當無 CWA API Key 或離線環境時，仍可完整驗證資料庫、折線圖、表格與地圖功能。
     包含：北部地區、中部地區、南部地區、東北部地區、東部地區、東南部地區 等一週預報。
     """
     mock_data = [
         # 北部地區
-        {"regionName": "北部地區", "dataDate": "2026-04-14", "mint": 18.0, "maxt": 26.0},
-        {"regionName": "北部地區", "dataDate": "2026-04-15", "mint": 19.0, "maxt": 27.0},
-        {"regionName": "北部地區", "dataDate": "2026-04-16", "mint": 20.0, "maxt": 28.0},
-        {"regionName": "北部地區", "dataDate": "2026-04-17", "mint": 21.0, "maxt": 29.0},
-        {"regionName": "北部地區", "dataDate": "2026-04-18", "mint": 20.0, "maxt": 28.0},
-        {"regionName": "北部地區", "dataDate": "2026-04-19", "mint": 19.0, "maxt": 27.0},
-        {"regionName": "北部地區", "dataDate": "2026-04-20", "mint": 18.0, "maxt": 26.0},
+        {"regionName": "北部地區", "dataDate": "2026-09-21", "mint": 22.0, "maxt": 28.0},
+        {"regionName": "北部地區", "dataDate": "2026-09-22", "mint": 23.0, "maxt": 29.0},
+        {"regionName": "北部地區", "dataDate": "2026-09-23", "mint": 24.0, "maxt": 30.0},
+        {"regionName": "北部地區", "dataDate": "2026-09-24", "mint": 24.0, "maxt": 29.0},
+        {"regionName": "北部地區", "dataDate": "2026-09-25", "mint": 23.0, "maxt": 28.0},
+        {"regionName": "北部地區", "dataDate": "2026-09-26", "mint": 22.0, "maxt": 29.0},
+        {"regionName": "北部地區", "dataDate": "2026-09-27", "mint": 23.0, "maxt": 30.0},
 
         # 中部地區
-        {"regionName": "中部地區", "dataDate": "2026-04-14", "mint": 20.0, "maxt": 30.0},
-        {"regionName": "中部地區", "dataDate": "2026-04-15", "mint": 21.0, "maxt": 31.0},
-        {"regionName": "中部地區", "dataDate": "2026-04-16", "mint": 22.0, "maxt": 32.0},
-        {"regionName": "中部地區", "dataDate": "2026-04-17", "mint": 21.0, "maxt": 30.0},
-        {"regionName": "中部地區", "dataDate": "2026-04-18", "mint": 22.0, "maxt": 31.0},
-        {"regionName": "中部地區", "dataDate": "2026-04-19", "mint": 21.0, "maxt": 30.0},
-        {"regionName": "中部地區", "dataDate": "2026-04-20", "mint": 20.0, "maxt": 29.0},
+        {"regionName": "中部地區", "dataDate": "2026-09-21", "mint": 24.0, "maxt": 31.0},
+        {"regionName": "中部地區", "dataDate": "2026-09-22", "mint": 24.0, "maxt": 32.0},
+        {"regionName": "中部地區", "dataDate": "2026-09-23", "mint": 25.0, "maxt": 33.0},
+        {"regionName": "中部地區", "dataDate": "2026-09-24", "mint": 25.0, "maxt": 32.0},
+        {"regionName": "中部地區", "dataDate": "2026-09-25", "mint": 24.0, "maxt": 31.0},
+        {"regionName": "中部地區", "dataDate": "2026-09-26", "mint": 24.0, "maxt": 32.0},
+        {"regionName": "中部地區", "dataDate": "2026-09-27", "mint": 25.0, "maxt": 32.0},
 
         # 南部地區
-        {"regionName": "南部地區", "dataDate": "2026-04-14", "mint": 22.0, "maxt": 31.0},
-        {"regionName": "南部地區", "dataDate": "2026-04-15", "mint": 23.0, "maxt": 32.0},
-        {"regionName": "南部地區", "dataDate": "2026-04-16", "mint": 24.0, "maxt": 33.0},
-        {"regionName": "南部地區", "dataDate": "2026-04-17", "mint": 23.0, "maxt": 32.0},
-        {"regionName": "南部地區", "dataDate": "2026-04-18", "mint": 24.0, "maxt": 33.0},
-        {"regionName": "南部地區", "dataDate": "2026-04-19", "mint": 23.0, "maxt": 32.0},
-        {"regionName": "南部地區", "dataDate": "2026-04-20", "mint": 22.0, "maxt": 31.0},
+        {"regionName": "南部地區", "dataDate": "2026-09-21", "mint": 25.0, "maxt": 32.0},
+        {"regionName": "南部地區", "dataDate": "2026-09-22", "mint": 25.0, "maxt": 33.0},
+        {"regionName": "南部地區", "dataDate": "2026-09-23", "mint": 26.0, "maxt": 33.0},
+        {"regionName": "南部地區", "dataDate": "2026-09-24", "mint": 25.0, "maxt": 32.0},
+        {"regionName": "南部地區", "dataDate": "2026-09-25", "mint": 25.0, "maxt": 32.0},
+        {"regionName": "南部地區", "dataDate": "2026-09-26", "mint": 26.0, "maxt": 33.0},
+        {"regionName": "南部地區", "dataDate": "2026-09-27", "mint": 25.0, "maxt": 32.0},
 
         # 東北部地區
-        {"regionName": "東北部地區", "dataDate": "2026-04-14", "mint": 18.0, "maxt": 27.0},
-        {"regionName": "東北部地區", "dataDate": "2026-04-15", "mint": 19.0, "maxt": 26.0},
-        {"regionName": "東北部地區", "dataDate": "2026-04-16", "mint": 20.0, "maxt": 27.0},
-        {"regionName": "東北部地區", "dataDate": "2026-04-17", "mint": 20.0, "maxt": 28.0},
-        {"regionName": "東北部地區", "dataDate": "2026-04-18", "mint": 19.0, "maxt": 27.0},
-        {"regionName": "東北部地區", "dataDate": "2026-04-19", "mint": 18.0, "maxt": 26.0},
-        {"regionName": "東北部地區", "dataDate": "2026-04-20", "mint": 18.0, "maxt": 25.0},
+        {"regionName": "東北部地區", "dataDate": "2026-09-21", "mint": 22.0, "maxt": 27.0},
+        {"regionName": "東北部地區", "dataDate": "2026-09-22", "mint": 23.0, "maxt": 28.0},
+        {"regionName": "東北部地區", "dataDate": "2026-09-23", "mint": 23.0, "maxt": 28.0},
+        {"regionName": "東北部地區", "dataDate": "2026-09-24", "mint": 22.0, "maxt": 27.0},
+        {"regionName": "東北部地區", "dataDate": "2026-09-25", "mint": 22.0, "maxt": 27.0},
+        {"regionName": "東北部地區", "dataDate": "2026-09-26", "mint": 23.0, "maxt": 28.0},
+        {"regionName": "東北部地區", "dataDate": "2026-09-27", "mint": 23.0, "maxt": 28.0},
 
         # 東部地區
-        {"regionName": "東部地區", "dataDate": "2026-04-14", "mint": 21.0, "maxt": 29.0},
-        {"regionName": "東部地區", "dataDate": "2026-04-15", "mint": 21.0, "maxt": 28.0},
-        {"regionName": "東部地區", "dataDate": "2026-04-16", "mint": 22.0, "maxt": 29.0},
-        {"regionName": "東部地區", "dataDate": "2026-04-17", "mint": 22.0, "maxt": 30.0},
-        {"regionName": "東部地區", "dataDate": "2026-04-18", "mint": 21.0, "maxt": 29.0},
-        {"regionName": "東部地區", "dataDate": "2026-04-19", "mint": 20.0, "maxt": 28.0},
-        {"regionName": "東部地區", "dataDate": "2026-04-20", "mint": 20.0, "maxt": 28.0},
+        {"regionName": "東部地區", "dataDate": "2026-09-21", "mint": 23.0, "maxt": 29.0},
+        {"regionName": "東部地區", "dataDate": "2026-09-22", "mint": 23.0, "maxt": 30.0},
+        {"regionName": "東部地區", "dataDate": "2026-09-23", "mint": 24.0, "maxt": 30.0},
+        {"regionName": "東部地區", "dataDate": "2026-09-24", "mint": 24.0, "maxt": 29.0},
+        {"regionName": "東部地區", "dataDate": "2026-09-25", "mint": 23.0, "maxt": 29.0},
+        {"regionName": "東部地區", "dataDate": "2026-09-26", "mint": 23.0, "maxt": 30.0},
+        {"regionName": "東部地區", "dataDate": "2026-09-27", "mint": 24.0, "maxt": 30.0},
 
         # 東南部地區
-        {"regionName": "東南部地區", "dataDate": "2026-04-14", "mint": 22.0, "maxt": 30.0},
-        {"regionName": "東南部地區", "dataDate": "2026-04-15", "mint": 23.0, "maxt": 31.0},
-        {"regionName": "東南部地區", "dataDate": "2026-04-16", "mint": 23.0, "maxt": 31.0},
-        {"regionName": "東南部地區", "dataDate": "2026-04-17", "mint": 24.0, "maxt": 32.0},
-        {"regionName": "東南部地區", "dataDate": "2026-04-18", "mint": 23.0, "maxt": 31.0},
-        {"regionName": "東南部地區", "dataDate": "2026-04-19", "mint": 22.0, "maxt": 30.0},
-        {"regionName": "東南部地區", "dataDate": "2026-04-20", "mint": 22.0, "maxt": 30.0},
+        {"regionName": "東南部地區", "dataDate": "2026-09-21", "mint": 24.0, "maxt": 30.0},
+        {"regionName": "東南部地區", "dataDate": "2026-09-22", "mint": 24.0, "maxt": 31.0},
+        {"regionName": "東南部地區", "dataDate": "2026-09-23", "mint": 25.0, "maxt": 31.0},
+        {"regionName": "東南部地區", "dataDate": "2026-09-24", "mint": 25.0, "maxt": 31.0},
+        {"regionName": "東南部地區", "dataDate": "2026-09-25", "mint": 24.0, "maxt": 30.0},
+        {"regionName": "東南部地區", "dataDate": "2026-09-26", "mint": 24.0, "maxt": 31.0},
+        {"regionName": "東南部地區", "dataDate": "2026-09-27", "mint": 25.0, "maxt": 31.0},
     ]
     return save_forecasts(mock_data, db_path)
 

@@ -1,0 +1,967 @@
+/* ==========================================================================
+   Taiwan Weather Forecast - The Powerpuff Girls Theme (飛天小女警特派氣象站)
+   Pure Vanilla CSS - Retro Pop Cartoon & Neo-Brutalist Bubbly Aesthetic
+   ========================================================================== */
+
+:root {
+  /* The Powerpuff Girls Signature Color Triad */
+  --ppg-blossom-pink: #FF3377;
+  --ppg-blossom-light: #FFE4EE;
+  --ppg-blossom-glow: rgba(255, 51, 119, 0.25);
+
+  --ppg-bubbles-blue: #00B4D8;
+  --ppg-bubbles-light: #E0F7FD;
+  --ppg-bubbles-glow: rgba(0, 180, 216, 0.25);
+
+  --ppg-buttercup-green: #52B72A;
+  --ppg-buttercup-bright: #70E000;
+  --ppg-buttercup-light: #EAF8E6;
+  --ppg-buttercup-glow: rgba(82, 183, 42, 0.25);
+
+  --ppg-star-yellow: #FFB703;
+  --ppg-star-light: #FFF8E1;
+
+  /* Comic Pop Inks & Backgrounds */
+  --comic-ink: #231244;
+  --comic-shadow: 4px 4px 0px var(--comic-ink);
+  --comic-shadow-hover: 7px 7px 0px var(--comic-ink);
+  --comic-border: 2.5px solid var(--comic-ink);
+
+  --bg-gradient: linear-gradient(135deg, #FFF0F5 0%, #F0F9FF 50%, #F2FFF5 100%);
+  --panel-bg: #FFFFFF;
+
+  --text-main: #231244;
+  --text-muted: #5B487A;
+  --text-light: #8E7BA8;
+
+  /* Typography */
+  --font-family: 'Fredoka', 'Noto Sans TC', system-ui, -apple-system, sans-serif;
+  --radius-xl: 26px;
+  --radius-lg: 20px;
+  --radius-md: 14px;
+  --radius-full: 9999px;
+
+  /* Transitions */
+  --bouncy-transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Base Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body.ppg-theme {
+  font-family: var(--font-family);
+  background: var(--bg-gradient);
+  background-attachment: fixed;
+  color: var(--text-main);
+  min-height: 100vh;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Subtle Powerpuff Girls Heart Wallpaper Background Effect */
+.heart-bg-pattern {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 0;
+  background-image: 
+    radial-gradient(circle at 10% 20%, rgba(255, 51, 119, 0.05) 0%, transparent 20%),
+    radial-gradient(circle at 90% 15%, rgba(0, 180, 216, 0.05) 0%, transparent 20%),
+    radial-gradient(circle at 80% 85%, rgba(112, 224, 0, 0.05) 0%, transparent 25%),
+    radial-gradient(circle at 20% 80%, rgba(255, 183, 3, 0.05) 0%, transparent 20%);
+}
+
+.app-container {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 24px 28px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  position: relative;
+  z-index: 1;
+}
+
+/* --------------------------------------------------------------------------
+   Powerpuff Girls Panel Base (Comic Pop Neo-Brutalism)
+   -------------------------------------------------------------------------- */
+.ppg-panel {
+  background: var(--panel-bg);
+  border: var(--comic-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--comic-shadow);
+  transition: var(--bouncy-transition);
+}
+
+.ppg-panel:hover {
+  box-shadow: var(--comic-shadow-hover);
+  transform: translateY(-2px);
+}
+
+/* --------------------------------------------------------------------------
+   1. Hero Header (The Powerpuff Girls Edition)
+   -------------------------------------------------------------------------- */
+.ppg-hero {
+  background: linear-gradient(135deg, #FFE8F2 0%, #E8F7FE 50%, #EDFCEB 100%);
+  border: var(--comic-border);
+  border-radius: 28px;
+  padding: 28px 36px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  box-shadow: 6px 6px 0px var(--comic-ink);
+  position: relative;
+  overflow: hidden;
+}
+
+.brand-badge-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.ppg-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 4px 14px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--comic-ink);
+  box-shadow: 2px 2px 0px var(--comic-ink);
+  transition: var(--bouncy-transition);
+  cursor: default;
+}
+
+.ppg-badge:hover {
+  transform: translateY(-2px) scale(1.05);
+}
+
+.ppg-blossom-badge {
+  background: var(--ppg-blossom-light);
+  color: var(--ppg-blossom-pink);
+}
+
+.ppg-bubbles-badge {
+  background: var(--ppg-bubbles-light);
+  color: #0077B6;
+}
+
+.ppg-buttercup-badge {
+  background: var(--ppg-buttercup-light);
+  color: #2D6A4F;
+}
+
+.hero-title {
+  font-size: 2.3rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* Normal weather icon without tint or clipping */
+.weather-icon-normal {
+  font-size: 2.6rem;
+  display: inline-block;
+  line-height: 1;
+  -webkit-text-fill-color: initial !important;
+  color: initial !important;
+  background: none !important;
+  filter: drop-shadow(2px 2px 0px rgba(35, 18, 68, 0.2));
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  user-select: none;
+}
+
+.hero-title:hover .weather-icon-normal {
+  transform: scale(1.25) rotate(10deg);
+}
+
+.hero-title-text {
+  background: linear-gradient(115deg, #FF3377 0%, #00B4D8 50%, #52B72A 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 800;
+}
+
+.hero-subtitle {
+  font-size: 1rem;
+  color: var(--text-muted);
+  margin-top: 8px;
+  font-weight: 600;
+}
+
+.hero-right {
+  display: flex;
+  align-items: center;
+}
+
+.ppg-card-pop {
+  background: #FFFFFF;
+  border: var(--comic-border);
+  border-radius: var(--radius-lg);
+  padding: 14px 20px;
+  box-shadow: 3px 3px 0px var(--comic-ink);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.pulse-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--ppg-buttercup-light);
+  border: 1.5px solid var(--comic-ink);
+  color: #2D6A4F;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 5px 14px;
+  border-radius: var(--radius-full);
+}
+
+.pulse-dot {
+  width: 9px;
+  height: 9px;
+  background: var(--ppg-buttercup-bright);
+  border: 1px solid var(--comic-ink);
+  border-radius: 50%;
+  animation: ppg-bounce 1.5s infinite alternate;
+}
+
+@keyframes ppg-bounce {
+  from { transform: scale(0.9); }
+  to { transform: scale(1.3); }
+}
+
+.sync-time {
+  font-size: 0.8rem;
+  color: var(--text-light);
+  font-weight: 600;
+}
+
+.ppg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #FFE8F2;
+  border: 2px solid var(--comic-ink);
+  color: var(--comic-ink);
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 8px 18px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  box-shadow: 2px 2px 0px var(--comic-ink);
+  transition: var(--bouncy-transition);
+}
+
+.ppg-btn:hover {
+  background: var(--ppg-blossom-pink);
+  color: #FFFFFF;
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0px var(--comic-ink);
+}
+
+.ppg-btn:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0px var(--comic-ink);
+}
+
+.sync-btn-icon.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* --------------------------------------------------------------------------
+   2. Control Bar (Region Selector & Pills)
+   -------------------------------------------------------------------------- */
+.control-bar {
+  padding: 18px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.region-select-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.control-label {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.custom-select-wrapper {
+  position: relative;
+}
+
+.custom-select {
+  appearance: none;
+  background: #FFFFFF;
+  border: 2px solid var(--comic-ink);
+  border-radius: var(--radius-md);
+  padding: 8px 36px 8px 16px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+  cursor: pointer;
+  box-shadow: 2px 2px 0px var(--comic-ink);
+  transition: var(--bouncy-transition);
+  min-width: 190px;
+}
+
+.custom-select-wrapper::after {
+  content: '▼';
+  font-size: 0.65rem;
+  color: var(--comic-ink);
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.custom-select:hover,
+.custom-select:focus {
+  outline: none;
+  border-color: var(--ppg-blossom-pink);
+  box-shadow: 3px 3px 0px var(--comic-ink);
+}
+
+.quick-pills {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.quick-pills-label {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.pill-btn {
+  background: #FFFFFF;
+  border: 2px solid var(--comic-ink);
+  border-radius: var(--radius-full);
+  padding: 7px 16px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-main);
+  cursor: pointer;
+  box-shadow: 2px 2px 0px var(--comic-ink);
+  transition: var(--bouncy-transition);
+}
+
+.pill-btn:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0px var(--comic-ink);
+  background: var(--ppg-bubbles-light);
+}
+
+.pill-btn.active {
+  background: linear-gradient(135deg, var(--ppg-blossom-pink) 0%, #FF6599 100%);
+  color: #FFFFFF;
+  box-shadow: 3px 3px 0px var(--comic-ink);
+}
+
+/* --------------------------------------------------------------------------
+   3. Key Metrics Cards (Powerpuff Girls Trio Accents)
+   -------------------------------------------------------------------------- */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+.metric-card {
+  padding: 22px 24px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.card-bubbles { background: #F0FAFF; }
+.card-blossom { background: #FFF0F5; }
+.card-bubbles-low { background: #F0F9FF; }
+.card-buttercup { background: #F4FFF0; }
+
+.metric-icon-wrap {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--comic-ink);
+  box-shadow: 2px 2px 0px var(--comic-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  flex-shrink: 0;
+  background: #FFFFFF;
+}
+
+.icon-avg { background: var(--ppg-bubbles-light); }
+.icon-high { background: var(--ppg-blossom-light); }
+.icon-low { background: #E0F7FD; }
+.icon-diff { background: var(--ppg-buttercup-light); }
+
+.metric-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.metric-label {
+  font-size: 0.84rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--text-muted);
+}
+
+.metric-value-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin: 3px 0;
+}
+
+.metric-value {
+  font-size: 2.2rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--text-main);
+}
+
+.metric-unit {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.metric-desc {
+  font-size: 0.8rem;
+  color: var(--text-light);
+  font-weight: 600;
+}
+
+.text-high { color: var(--ppg-blossom-pink); }
+.text-low { color: var(--ppg-bubbles-blue); }
+.text-diff { color: #2D6A4F; }
+
+/* --------------------------------------------------------------------------
+   4. 7-Day Forecast Cards (Fixing: 今日氣溫絕不遮擋)
+   -------------------------------------------------------------------------- */
+.forecast-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.section-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.3px;
+}
+
+.section-hint {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* Comfortable container padding so cards with hover do not clip */
+.forecast-cards-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  gap: 16px;
+  overflow-x: auto;
+  padding: 12px 6px 16px;
+}
+
+/* Card Styling: Clean vertical flow with NO overlapping/clipped elements */
+.forecast-card {
+  background: #FFFFFF;
+  border: var(--comic-border);
+  border-radius: var(--radius-lg);
+  padding: 16px 14px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  box-shadow: 3px 3px 0px var(--comic-ink);
+  transition: var(--bouncy-transition);
+  cursor: pointer;
+  position: relative;
+}
+
+.forecast-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 6px 6px 0px var(--comic-ink);
+  border-color: var(--ppg-blossom-pink);
+}
+
+/* Highlight Today's card without clipping */
+.forecast-card.today {
+  border: 3px solid var(--ppg-blossom-pink);
+  background: linear-gradient(180deg, #FFF0F5 0%, #FFFFFF 100%);
+  box-shadow: 4px 4px 0px var(--comic-ink);
+}
+
+/* TODAY BADGE: INLINE FLOW - NEVER OVERLAPS OR CLIPS DATE/TEMPS! */
+.today-tag-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2px;
+}
+
+.today-tag-pill {
+  background: var(--ppg-blossom-pink);
+  color: #FFFFFF;
+  font-size: 0.74rem;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--comic-ink);
+  box-shadow: 1.5px 1.5px 0px var(--comic-ink);
+  letter-spacing: 0.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fc-date {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+
+.fc-day {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.fc-icon {
+  font-size: 2.4rem;
+  line-height: 1;
+  margin: 6px 0;
+  -webkit-text-fill-color: initial !important;
+  color: initial !important;
+  filter: drop-shadow(1px 1px 0px rgba(0, 0, 0, 0.15));
+  transition: transform 0.2s ease;
+}
+
+.forecast-card:hover .fc-icon {
+  transform: scale(1.2) rotate(6deg);
+}
+
+/* Temperatures: Clear, bold and completely unblocked */
+.fc-temps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.fc-temp-max {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--ppg-blossom-pink);
+}
+
+.fc-temp-min {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--ppg-bubbles-blue);
+}
+
+.fc-desc {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: #F4EFFC;
+  border: 1px solid #E2D9F3;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  margin-top: 4px;
+}
+
+/* --------------------------------------------------------------------------
+   5. Chart & Map Grid
+   -------------------------------------------------------------------------- */
+.dashboard-main-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 24px;
+}
+
+@media (max-width: 1024px) {
+  .dashboard-main-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card-header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.card-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.3px;
+}
+
+.card-subtitle {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  margin-top: 3px;
+  font-weight: 600;
+}
+
+.chart-legend-custom {
+  display: flex;
+  gap: 10px;
+}
+
+.legend-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 5px 14px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--comic-ink);
+  box-shadow: 2px 2px 0px var(--comic-ink);
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--comic-ink);
+}
+
+.legend-max {
+  background: var(--ppg-blossom-light);
+  color: var(--ppg-blossom-pink);
+}
+.max-dot { background: var(--ppg-blossom-pink); }
+
+.legend-min {
+  background: var(--ppg-bubbles-light);
+  color: var(--ppg-bubbles-blue);
+}
+.min-dot { background: var(--ppg-bubbles-blue); }
+
+.chart-container {
+  padding: 26px 28px;
+  min-height: 440px;
+  display: flex;
+  flex-direction: column;
+}
+
+.canvas-wrapper {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  min-height: 320px;
+}
+
+/* --------------------------------------------------------------------------
+   6. Leaflet Map (Fixing: OpenStreetMap 移除浮水印)
+   -------------------------------------------------------------------------- */
+.map-container {
+  padding: 26px 28px;
+  display: flex;
+  flex-direction: column;
+}
+
+.map-view {
+  width: 100%;
+  height: 350px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 2px solid var(--comic-ink);
+  box-shadow: 3px 3px 0px var(--comic-ink);
+  z-index: 1;
+}
+
+/* STRICT WATERMARK REMOVAL */
+.leaflet-control-attribution {
+  display: none !important;
+}
+
+.map-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.temp-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.color-badge {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  border: 1.5px solid var(--comic-ink);
+}
+.color-badge.blue { background: var(--ppg-bubbles-blue); }
+.color-badge.green { background: var(--ppg-buttercup-bright); }
+.color-badge.orange { background: var(--ppg-star-yellow); }
+.color-badge.red { background: var(--ppg-blossom-pink); }
+
+/* Powerpuff Girls Custom Candy Pin Markers on Map */
+.custom-leaflet-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+.custom-map-pin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition: var(--bouncy-transition);
+}
+
+.custom-map-pin:hover {
+  transform: scale(1.22) translateY(-4px);
+  z-index: 9999 !important;
+}
+
+.pin-bubble {
+  color: #FFFFFF;
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--comic-ink);
+  box-shadow: 2px 2px 0px var(--comic-ink);
+  white-space: nowrap;
+  letter-spacing: -0.2px;
+}
+
+.pin-bubble.temp-blue { background: var(--ppg-bubbles-blue); }
+.pin-bubble.temp-green { background: #38B000; }
+.pin-bubble.temp-orange { background: var(--ppg-star-yellow); color: var(--comic-ink); }
+.pin-bubble.temp-red { background: var(--ppg-blossom-pink); }
+
+.pin-pointer {
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid var(--comic-ink);
+}
+
+/* --------------------------------------------------------------------------
+   7. Detailed Data Table
+   -------------------------------------------------------------------------- */
+.table-section {
+  padding: 26px 28px;
+}
+
+.table-search-input {
+  background: #FFFFFF;
+  border: 2px solid var(--comic-ink);
+  border-radius: var(--radius-md);
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-main);
+  outline: none;
+  box-shadow: 2px 2px 0px var(--comic-ink);
+  min-width: 220px;
+  transition: var(--bouncy-transition);
+}
+
+.table-search-input:focus {
+  border-color: var(--ppg-blossom-pink);
+  box-shadow: 3px 3px 0px var(--comic-ink);
+}
+
+.table-responsive {
+  overflow-x: auto;
+  margin-top: 14px;
+}
+
+.weather-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  text-align: left;
+  font-size: 0.92rem;
+}
+
+.weather-table thead th {
+  background: #FFF0F5;
+  color: var(--text-main);
+  font-weight: 800;
+  padding: 14px 18px;
+  border-bottom: 2px solid var(--comic-ink);
+  font-size: 0.85rem;
+  letter-spacing: 0.3px;
+}
+
+.weather-table tbody tr {
+  border-bottom: 1px solid #EAE2F8;
+  transition: background-color 0.2s ease;
+}
+
+.weather-table tbody tr:hover {
+  background-color: #F8F2FF;
+}
+
+.weather-table tbody td {
+  padding: 14px 18px;
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.pill-table {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: var(--radius-full);
+  font-weight: 800;
+  font-size: 0.84rem;
+  border: 1.5px solid var(--comic-ink);
+  box-shadow: 1.5px 1.5px 0px var(--comic-ink);
+}
+
+.pill-table-high {
+  background: var(--ppg-blossom-light);
+  color: var(--ppg-blossom-pink);
+}
+
+.pill-table-low {
+  background: var(--ppg-bubbles-light);
+  color: var(--ppg-bubbles-blue);
+}
+
+/* --------------------------------------------------------------------------
+   8. Footer
+   -------------------------------------------------------------------------- */
+.app-footer {
+  text-align: center;
+  padding: 24px 0 12px;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.footer-sub {
+  font-size: 0.8rem;
+  color: var(--text-light);
+  margin-top: 4px;
+}
+
+/* --------------------------------------------------------------------------
+   9. Toast Notifications
+   -------------------------------------------------------------------------- */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.toast {
+  background: #FFFFFF;
+  color: var(--comic-ink);
+  border: 2px solid var(--comic-ink);
+  padding: 14px 22px;
+  border-radius: var(--radius-md);
+  font-size: 0.92rem;
+  font-weight: 700;
+  box-shadow: 4px 4px 0px var(--comic-ink);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: auto;
+  animation: slide-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: opacity 0.3s ease;
+}
+
+.toast.success { border-left: 6px solid var(--ppg-buttercup-bright); }
+.toast.info { border-left: 6px solid var(--ppg-bubbles-blue); }
+.toast.error { border-left: 6px solid var(--ppg-blossom-pink); }
+
+@keyframes slide-in {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .app-container {
+    padding: 16px 14px;
+  }
+  .hero-header {
+    padding: 20px 20px;
+  }
+  .hero-title {
+    font-size: 1.7rem;
+  }
+  .control-bar {
+    padding: 14px 16px;
+  }
+}

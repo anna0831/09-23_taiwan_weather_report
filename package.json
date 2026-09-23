@@ -1,0 +1,23 @@
+{
+  "name": "taiwan-weather-forecast-vercel",
+  "version": "1.0.0",
+  "description": "Taiwan Weather Forecast Web App deployable to Vercel with CWA API sync, interactive Leaflet map, and Chart.js dual spline curves",
+  "main": "api/weather.py",
+  "scripts": {
+    "dev": "python dev_server.py",
+    "start": "python dev_server.py",
+    "build": "echo \"Vercel build complete\"",
+    "test": "python -m unittest discover -s tests"
+  },
+  "keywords": [
+    "taiwan",
+    "weather",
+    "cwa",
+    "vercel",
+    "forecast",
+    "chartjs",
+    "leaflet"
+  ],
+  "author": "Antigravity",
+  "license": "MIT"
+}
