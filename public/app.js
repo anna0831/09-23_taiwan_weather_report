@@ -362,12 +362,12 @@ function initMap() {
   const mapElement = document.getElementById('taiwan-map');
   if (!mapElement || state.mapInstance) return;
 
-  // Taiwan Center Coordinates [23.8, 120.95]
+  // Taiwan Center Coordinates [23.7, 120.95] - 最佳視野
   state.mapInstance = L.map('taiwan-map', {
-    center: [23.8, 120.95],
-    zoom: 7.2,
+    center: [23.7, 120.95],
+    zoom: 7.7,
     zoomControl: true,
-    scrollWheelZoom: false,
+    scrollWheelZoom: true,
     attributionControl: false // 完全移除 Leaflet 預設浮水印文字
   });
 
@@ -378,6 +378,16 @@ function initMap() {
   }).addTo(state.mapInstance);
 
   state.markersLayer = L.layerGroup().addTo(state.mapInstance);
+
+  // 確保全幅大地圖自適應更新尺寸
+  setTimeout(() => {
+    if (state.mapInstance) state.mapInstance.invalidateSize();
+  }, 200);
+
+  window.addEventListener('resize', () => {
+    if (state.mapInstance) state.mapInstance.invalidateSize();
+  });
+
 }
 
 function getTempColorClass(avg) {

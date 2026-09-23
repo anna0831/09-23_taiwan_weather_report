@@ -146,43 +146,41 @@
       </div>
     </section>
 
-    <!-- Main Content: Chart & Map Side-by-Side -->
-    <main class="dashboard-main-grid">
-      <!-- Chart Card -->
-      <section class="chart-container ppg-panel">
-        <div class="card-header-flex">
-          <div>
-            <h2 class="card-title">📈 氣溫高低雙色曲線圖</h2>
-            <p class="card-subtitle">🌸 花花粉紅 (最高溫) · 🫧 泡泡晴空藍 (最低溫)</p>
-          </div>
-          <div class="chart-legend-custom">
-            <span class="legend-badge legend-max"><span class="legend-dot max-dot"></span> 最高溫 (MaxT)</span>
-            <span class="legend-badge legend-min"><span class="legend-dot min-dot"></span> 最低溫 (MinT)</span>
-          </div>
+    <!-- Grand Map Section (讓地圖成為最大的旗艦版面) -->
+    <section class="map-grand-container ppg-panel">
+      <div class="card-header-flex">
+        <div>
+          <h2 class="card-title">🗺️ 全台巡邏氣象大地圖 (Grand Weather Map)</h2>
+          <p class="card-subtitle">💖 飛天小女警全台即時氣象守護 · 點擊任意縣市糖果氣溫標籤即可切換觀測</p>
         </div>
-        <div class="canvas-wrapper">
-          <canvas id="tempChart"></canvas>
+        <div class="map-legend">
+          <span class="temp-legend-item"><span class="color-badge blue"></span>&lt;20°C 涼爽</span>
+          <span class="temp-legend-item"><span class="color-badge green"></span>20~24°C 舒適</span>
+          <span class="temp-legend-item"><span class="color-badge orange"></span>25~29°C 溫暖</span>
+          <span class="temp-legend-item"><span class="color-badge red"></span>≥30°C 炎熱</span>
         </div>
-      </section>
+      </div>
+      <!-- Clean OpenStreetMap without any watermark -->
+      <div id="taiwan-map" class="map-view map-grand-view"></div>
+    </section>
 
-      <!-- Map Card -->
-      <section class="map-container ppg-panel">
-        <div class="card-header-flex">
-          <div>
-            <h2 class="card-title">🗺️ 全台巡邏氣象地圖 (無浮水印)</h2>
-            <p class="card-subtitle">點擊小女警糖果氣溫標籤，立即切換地區觀測</p>
-          </div>
-          <div class="map-legend">
-            <span class="temp-legend-item"><span class="color-badge blue"></span>&lt;20°C 涼爽</span>
-            <span class="temp-legend-item"><span class="color-badge green"></span>20~24°C 舒適</span>
-            <span class="temp-legend-item"><span class="color-badge orange"></span>25~29°C 溫暖</span>
-            <span class="temp-legend-item"><span class="color-badge red"></span>≥30°C 炎熱</span>
-          </div>
+    <!-- Spline Curve Chart Section -->
+    <section class="chart-container ppg-panel">
+      <div class="card-header-flex">
+        <div>
+          <h2 class="card-title">📈 氣溫高低雙色曲線圖</h2>
+          <p class="card-subtitle">🌸 花花粉紅 (最高溫) · 🫧 泡泡晴空藍 (最低溫)</p>
         </div>
-        <!-- Clean OpenStreetMap without Carto API Key watermark -->
-        <div id="taiwan-map" class="map-view"></div>
-      </section>
-    </main>
+        <div class="chart-legend-custom">
+          <span class="legend-badge legend-max"><span class="legend-dot max-dot"></span> 最高溫 (MaxT)</span>
+          <span class="legend-badge legend-min"><span class="legend-dot min-dot"></span> 最低溫 (MinT)</span>
+        </div>
+      </div>
+      <div class="canvas-wrapper">
+        <canvas id="tempChart"></canvas>
+      </div>
+    </section>
+
 
     <!-- Detailed Forecast Data Table -->
     <section class="table-section ppg-panel">

@@ -485,92 +485,88 @@ with tab_map:
             
         df_for_date = get_forecasts_by_date(selected_date)
         
-        map_col, table_col = st.columns([1.7, 1.3])
-        
-        with map_col:
-            # 建立地圖 (移除浮水印)
-            m = folium.Map(
-                location=[23.75, 120.95],
-                zoom_start=7.4,
-                tiles="OpenStreetMap",
-                control_scale=False,
-            )
-            m.get_root().header.add_child(folium.Element("<style>.leaflet-control-attribution { display: none !important; }</style>"))
+        # 建立地圖 (全幅旗艦大地圖，無浮水印)
+        m = folium.Map(
+            location=[23.75, 120.95],
+            zoom_start=7.8,
+            tiles="OpenStreetMap",
+            control_scale=False,
+        )
+        m.get_root().header.add_child(folium.Element("<style>.leaflet-control-attribution { display: none !important; }</style>"))
 
+        for _, r in df_for_date.iterrows():
+            r_name = r["regionName"]
+            coord = REGION_COORDINATES.get(r_name)
             
-            for _, r in df_for_date.iterrows():
-                r_name = r["regionName"]
-                coord = REGION_COORDINATES.get(r_name)
+            # 模糊匹配
+            if not coord:
+                for k, v in REGION_COORDINATES.items():
+                    if k in r_name or r_name in k:
+                        coord = v
+                        break
+                        
+            if not coord:
+                continue
                 
-                # 模糊匹配
-                if not coord:
-                    for k, v in REGION_COORDINATES.items():
-                        if k in r_name or r_name in k:
-                            coord = v
-                            break
-                            
-                if not coord:
-                    continue
-                    
-                lat = coord["lat"]
-                lon = coord["lon"]
-                label = coord.get("label", r_name)
-                
-                d_min = r["mint"]
-                d_max = r["maxt"]
-                d_avg = round((d_min + d_max) / 2, 1)
-                color = get_temp_color(d_avg)
-                
-                # Popup HTML
-                pop_html = f"""
-                <div style="font-family:'Plus Jakarta Sans',sans-serif; min-width:140px; padding:4px;">
-                    <div style="font-size:15px; font-weight:700; color:#1E3A8A; margin-bottom:4px;">{r_name}</div>
-                    <div style="font-size:13px; color:#475569;">最低溫: <b>{d_min}°C</b></div>
-                    <div style="font-size:13px; color:#475569;">最高溫: <b>{d_max}°C</b></div>
-                    <div style="font-size:13px; color:#059669; margin-top:2px;">平均溫: <b>{d_avg}°C</b></div>
-                    <div style="font-size:11px; color:#94A3B8; margin-top:6px; border-top:1px solid #E2E8F0; padding-top:4px;">日期: {selected_date}</div>
-                </div>
-                """
-                
-                folium.CircleMarker(
-                    location=[lat, lon],
-                    radius=14,
-                    color=color,
-                    fill=True,
-                    fill_color=color,
-                    fill_opacity=0.85,
-                    popup=folium.Popup(pop_html, max_width=240),
-                    tooltip=f"{r_name} ({d_avg}°C)",
-                ).add_to(m)
-                
-                folium.map.Marker(
-                    [lat, lon],
-                    icon=folium.DivIcon(
-                        html=f"""<div style="font-size:11px; font-weight:700; color:#0F172A; text-shadow:0px 0px 4px #FFFFFF; margin-left:16px; margin-top:-8px;">{label} {d_avg}°</div>"""
-                    ),
-                ).add_to(m)
-                
-            st_folium(m, width=540, height=480)
+            lat = coord["lat"]
+            lon = coord["lon"]
+            label = coord.get("label", r_name)
             
-        with table_col:
-            st.markdown(f"##### 📌 {selected_date} 全區即時摘要")
-            if not df_for_date.empty:
-                t_df = df_for_date.copy()
-                t_df["平均溫 (°C)"] = ((t_df["mint"] + t_df["maxt"]) / 2).round(1)
-                t_df["狀態標籤"] = t_df["平均溫 (°C)"].apply(
-                    lambda x: "🔵 涼爽" if x < 20 else ("🟢 舒適" if x <= 25 else ("🟠 溫暖" if x <= 30 else "🔴 炎熱"))
-                )
-                t_df = t_df.rename(columns={
-                    "regionName": "地區名稱",
-                    "mint": "最低溫",
-                    "maxt": "最高溫",
-                })
-                st.dataframe(
-                    t_df[["地區名稱", "最低溫", "最高溫", "平均溫 (°C)", "狀態標籤"]],
-                    hide_index=True,
-                    height=440,
-                    use_container_width=True,
-                )
+            d_min = r["mint"]
+            d_max = r["maxt"]
+            d_avg = round((d_min + d_max) / 2, 1)
+            color = get_temp_color(d_avg)
+            
+            # Popup HTML
+            pop_html = f"""
+            <div style="font-family:'Fredoka','Noto Sans TC',sans-serif; min-width:140px; padding:4px;">
+                <div style="font-size:15px; font-weight:700; color:#231244; margin-bottom:4px;">💖 {r_name}</div>
+                <div style="font-size:13px; color:#5B487A;">最低溫: <b style="color:#00B4D8">{d_min}°C</b></div>
+                <div style="font-size:13px; color:#5B487A;">最高溫: <b style="color:#FF3377">{d_max}°C</b></div>
+                <div style="font-size:13px; color:#2D6A4F; margin-top:2px;">平均溫: <b>{d_avg}°C</b></div>
+                <div style="font-size:11px; color:#8E7BA8; margin-top:6px; border-top:1px solid #E2D9F3; padding-top:4px;">日期: {selected_date}</div>
+            </div>
+            """
+            
+            folium.CircleMarker(
+                location=[lat, lon],
+                radius=14,
+                color=color,
+                fill=True,
+                fill_color=color,
+                fill_opacity=0.85,
+                popup=folium.Popup(pop_html, max_width=240),
+                tooltip=f"{r_name} ({d_avg}°C)",
+            ).add_to(m)
+            
+            folium.map.Marker(
+                [lat, lon],
+                icon=folium.DivIcon(
+                    html=f"""<div style="font-size:11px; font-weight:700; color:#231244; text-shadow:0px 0px 4px #FFFFFF; margin-left:16px; margin-top:-8px;">{label} {d_avg}°</div>"""
+                ),
+            ).add_to(m)
+            
+        st_folium(m, use_container_width=True, height=560)
+        
+        st.markdown(f"##### 📌 {selected_date} 全區即時摘要")
+        if not df_for_date.empty:
+            t_df = df_for_date.copy()
+            t_df["平均溫 (°C)"] = ((t_df["mint"] + t_df["maxt"]) / 2).round(1)
+            t_df["狀態標籤"] = t_df["平均溫 (°C)"].apply(
+                lambda x: "🔵 涼爽" if x < 20 else ("🟢 舒適" if x <= 25 else ("🟠 溫暖" if x <= 30 else "🔴 炎熱"))
+            )
+            t_df = t_df.rename(columns={
+                "regionName": "地區名稱",
+                "mint": "最低溫",
+                "maxt": "最高溫",
+            })
+            st.dataframe(
+                t_df[["地區名稱", "最低溫", "最高溫", "平均溫 (°C)", "狀態標籤"]],
+                hide_index=True,
+                height=320,
+                use_container_width=True,
+            )
+
 
 # =============================================================
 # 分頁 3: 全台綜合分析明細
