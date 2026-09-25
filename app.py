@@ -11,6 +11,9 @@ import altair as alt
 import folium
 from streamlit_folium import st_folium
 
+import base64
+from pathlib import Path
+
 from src.config import (
     CWA_API_KEY,
     REGION_COORDINATES,
@@ -25,8 +28,23 @@ from src.db import (
     get_forecasts_by_date,
     seed_mock_data,
     get_metadata,
+    get_air_quality,
+    get_latest_typhoon_warning,
+)
+from src.lifestyle import (
+    evaluate_umbrella_advice,
+    evaluate_air_quality_advice,
+    evaluate_typhoon_advice,
 )
 from src.fetch_data import sync_cwa_to_db
+
+def get_image_base64(path: str) -> str:
+    """讀取本地圖檔並轉為 base64 字串以利 Streamlit 穩定嵌入。"""
+    try:
+        with open(path, "rb") as f:
+            return base64.b64encode(f.read()).decode("utf-8")
+    except Exception:
+        return ""
 
 # 頁面配置
 st.set_page_config(
@@ -230,6 +248,9 @@ st.markdown("""
 # -------------------------------------------------------------
 # 3. 頂部儀表板 Hero 區塊
 # -------------------------------------------------------------
+powerpuff_b64 = get_image_base64("public/powerpuff_girls.png")
+ppg_hero_img_html = f'<img src="data:image/png;base64,{powerpuff_b64}" style="height:86px; max-width:130px; object-fit:contain; filter:drop-shadow(3px 3px 0px #231244);" alt="飛天小女警">' if powerpuff_b64 else ''
+
 st.markdown(f"""
 <div class="top-hero">
     <div>
@@ -241,12 +262,15 @@ st.markdown(f"""
         <h1 class="hero-title"><span class="hero-icon">⛅</span><span class="hero-text">Taiwan Weather Forecast</span></h1>
         <div class="hero-desc">💖 飛天小女警特派氣象站 · 糖、香料與一切美好事物 · 為您擊退壞天氣！✨</div>
     </div>
-    <div style="text-align: right;">
-        <div class="status-badge">
-            <div class="pulse-dot"></div>
-            <span>⚡ 活力守護中 (Active)</span>
+    <div style="display:flex; align-items:center; gap:20px;">
+        {ppg_hero_img_html}
+        <div style="text-align: right;">
+            <div class="status-badge">
+                <div class="pulse-dot"></div>
+                <span>⚡ 活力守護中 (Active)</span>
+            </div>
+            <div style="font-size: 0.8rem; color: #5B487A; margin-top: 6px; font-weight:600;">最後同步時間：{last_sync}</div>
         </div>
-        <div style="font-size: 0.8rem; color: #5B487A; margin-top: 6px; font-weight:600;">最後同步時間：{last_sync}</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -363,6 +387,95 @@ with tab_forecast:
             """, unsafe_allow_html=True)
             
         st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
+        
+        # --- 飛天小女警特派生活指引 (Daily Lifestyle Advice) ---
+        st.markdown("##### ✨ 飛天小女警特派生活指引 (Daily Lifestyle Advice)")
+
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        today_match = df_reg[df_reg["dataDate"] == today_str]
+        target_row = today_match.iloc[0] if not today_match.empty else df_reg.iloc[0]
+        active_date_str = target_row.get("dataDate", today_str)
+
+        umbrella_adv = evaluate_umbrella_advice(
+            pop=target_row.get("pop"),
+            date_str=active_date_str,
+            region_name=selected_region
+        )
+
+        aq_rec = get_air_quality(selected_region)
+        air_adv = evaluate_air_quality_advice(
+            aqi=aq_rec.get("aqi") if aq_rec else None,
+            site_name=aq_rec.get("siteName") if aq_rec else selected_region,
+            obs_time=aq_rec.get("obsTime") if aq_rec else "",
+            is_forecast=False,
+            region_name=selected_region
+        )
+
+        ty_rec = get_latest_typhoon_warning()
+        ty_adv = evaluate_typhoon_advice(ty_rec, region_name=selected_region)
+
+        col_u, col_a, col_t = st.columns(3)
+        with col_u:
+            pop_display = f"{umbrella_adv['pop_value']}%" if umbrella_adv.get("pop_value") is not None else "無此期間資料"
+            st.markdown(f"""
+            <div style="background:#FFF; border:2.5px solid #231244; border-radius:18px; padding:18px; box-shadow:4px 4px 0px #231244; min-height:230px; display:flex; flex-direction:column; justify-content:space-between;">
+                <div>
+                    <div style="font-size:12px; font-weight:800; background:#FFE4EE; color:#FF3377; display:inline-block; padding:2px 8px; border-radius:99px; border:1px solid #231244; margin-bottom:6px;">{umbrella_adv['badge']}</div>
+                    <div style="font-size:1.15rem; font-weight:800; color:#231244;">☔ 今天要帶雨傘嗎？</div>
+                    <div style="font-size:1.8rem; font-weight:800; color:#FF3377; margin:4px 0;">{pop_display}</div>
+                    <div style="font-size:11px; color:#8E7BA8; margin-bottom:8px;">※ 降雨機率 (PoP)，非預測累積雨量</div>
+                    <div style="background:#FFF0F5; border:1.5px solid #FF3377; border-radius:10px; padding:8px 10px; font-size:12px; font-weight:600; line-height:1.4; color:#231244; margin-bottom:8px;">
+                        <strong>{umbrella_adv['status']}</strong>：{umbrella_adv['advice']}
+                    </div>
+                </div>
+                <div style="font-size:11px; color:#5B487A; line-height:1.3; border-top:1px dashed #E2D9F3; padding-top:6px;">
+                    <strong>判斷依據：</strong>{umbrella_adv['rule_explanation']}<br>
+                    <span style="color:#8E7BA8;">來源：{umbrella_adv['source']}</span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with col_a:
+            aqi_display = f"{air_adv['aqi_value']}" if air_adv.get("aqi_value") is not None else "無此期間資料"
+            st.markdown(f"""
+            <div style="background:#FFF; border:2.5px solid #231244; border-radius:18px; padding:18px; box-shadow:4px 4px 0px #231244; min-height:230px; display:flex; flex-direction:column; justify-content:space-between;">
+                <div>
+                    <div style="font-size:12px; font-weight:800; background:#E0F7FD; color:#0077B6; display:inline-block; padding:2px 8px; border-radius:99px; border:1px solid #231244; margin-bottom:6px;">{air_adv['badge']}</div>
+                    <div style="font-size:1.15rem; font-weight:800; color:#231244;">😷 今天要戴口罩嗎？</div>
+                    <div style="font-size:1.8rem; font-weight:800; color:#00B4D8; margin:4px 0;">AQI {aqi_display}</div>
+                    <div style="font-size:11px; color:#8E7BA8; margin-bottom:8px;">測站：{air_adv['site_name']} · 【{air_adv['data_type']}】</div>
+                    <div style="background:#F0FBFF; border:1.5px solid #00B4D8; border-radius:10px; padding:8px 10px; font-size:12px; font-weight:600; line-height:1.4; color:#231244; margin-bottom:8px;">
+                        <strong>{air_adv['status']}</strong>：{air_adv['advice']}
+                    </div>
+                </div>
+                <div style="font-size:11px; color:#5B487A; line-height:1.3; border-top:1px dashed #E2D9F3; padding-top:6px;">
+                    <strong>指標說明：</strong>{air_adv['guideline']}<br>
+                    <span style="color:#8E7BA8;">來源：{air_adv['source']}</span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with col_t:
+            ty_color = "#E63946" if ty_adv.get("is_warning_active") else "#2D6A4F"
+            st.markdown(f"""
+            <div style="background:#FFF; border:2.5px solid #231244; border-radius:18px; padding:18px; box-shadow:4px 4px 0px #231244; min-height:230px; display:flex; flex-direction:column; justify-content:space-between;">
+                <div>
+                    <div style="font-size:12px; font-weight:800; background:#EAF8E6; color:#2D6A4F; display:inline-block; padding:2px 8px; border-radius:99px; border:1px solid #231244; margin-bottom:6px;">{ty_adv['badge']}</div>
+                    <div style="font-size:1.15rem; font-weight:800; color:#231244;">🌀 需要提前準備物資嗎？</div>
+                    <div style="font-size:1.35rem; font-weight:800; color:{ty_color}; margin:6px 0; line-height:1.3;">{ty_adv['status']}</div>
+                    <div style="font-size:11px; color:#8E7BA8; margin-bottom:8px;">警戒區：{ty_adv.get('affected_areas', '無')}</div>
+                    <div style="background:#F4FBF5; border:1.5px solid #52B72A; border-radius:10px; padding:8px 10px; font-size:12px; font-weight:600; line-height:1.4; color:#231244; margin-bottom:8px;">
+                        {ty_adv['advice']}
+                    </div>
+                </div>
+                <div style="font-size:11px; color:#5B487A; line-height:1.3; border-top:1px dashed #E2D9F3; padding-top:6px;">
+                    <strong>防備依據：</strong>僅於發布海上/陸上警報且明確影響時提醒防備；常態時請安心。<br>
+                    <span style="color:#8E7BA8;">來源：{ty_adv['source']}</span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
         
         # --- 7 天預報精美卡片列 ---
         st.markdown("##### 📅 未來一週每日預報預覽")

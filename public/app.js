@@ -7,8 +7,10 @@
 // Application State
 const state = {
   currentRegion: '臺北市',
+  selectedDate: null,
   regions: [],
   selectedForecasts: [],
+  lifestyleAdvice: null,
   mapPoints: [],
   lastSync: '',
   chartInstance: null,
@@ -72,11 +74,14 @@ function showToast(message, type = 'info') {
 // ============================================================================
 // 1. Data Fetching & Sync
 // ============================================================================
-async function fetchWeatherData(region = null, triggerSync = false) {
+async function fetchWeatherData(region = null, triggerSync = false, date = null) {
   try {
     let url = '/api/weather';
     const params = new URLSearchParams();
-    if (region) params.append('region', region);
+    const targetRegion = region || state.currentRegion;
+    if (targetRegion) params.append('region', targetRegion);
+    const targetDate = date || state.selectedDate;
+    if (targetDate) params.append('date', targetDate);
     if (triggerSync) params.append('sync', '1');
     if (Array.from(params).length > 0) {
       url += '?' + params.toString();
@@ -89,8 +94,10 @@ async function fetchWeatherData(region = null, triggerSync = false) {
     if (data.status === 'success') {
       state.lastSync = data.last_sync || '';
       state.regions = data.regions || [];
-      state.currentRegion = data.selected_region || region || '臺北市';
+      state.currentRegion = data.selected_region || targetRegion || '臺北市';
+      state.selectedDate = data.selected_date || targetDate || null;
       state.selectedForecasts = data.selected_forecasts || [];
+      state.lifestyleAdvice = data.lifestyle_advice || null;
       state.mapPoints = data.map_points || [];
 
       if (data.sync_message) {
@@ -116,6 +123,7 @@ function renderAll() {
   renderSyncInfo();
   renderRegionControls();
   renderKeyMetrics();
+  renderLifestyleCards();
   renderForecastCards();
   renderSplineChart();
   renderMapMarkers();
@@ -131,20 +139,22 @@ function renderSyncInfo() {
 
 function renderRegionControls() {
   const select = document.getElementById('region-select');
-  if (select && select.options.length <= 1) {
-    select.innerHTML = '';
-    state.regions.forEach(reg => {
-      const opt = document.createElement('option');
-      opt.value = reg;
-      opt.textContent = reg;
-      opt.selected = (reg === state.currentRegion);
-      select.appendChild(opt);
-    });
-  } else if (select) {
-    select.value = state.currentRegion;
+  if (select) {
+    if (select.options.length <= 1 || select.options.length !== state.regions.length) {
+      select.innerHTML = '';
+      state.regions.forEach(reg => {
+        const opt = document.createElement('option');
+        opt.value = reg;
+        opt.textContent = reg;
+        opt.selected = (reg === state.currentRegion);
+        select.appendChild(opt);
+      });
+    } else {
+      select.value = state.currentRegion;
+    }
   }
 
-  // Update pill active classes
+  // Update pill active classes (修復熱門巡邏點切換狀態)
   document.querySelectorAll('.pill-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.region === state.currentRegion);
   });
@@ -197,8 +207,111 @@ function renderKeyMetrics() {
   document.getElementById('metric-diff').textContent = maxDiff.toFixed(1);
 }
 
+// ============================================================================
+// Lifestyle Advice Cards Renderer (飛天小女警特派生活建議)
+// ============================================================================
+function renderLifestyleCards() {
+  const lifestyle = state.lifestyleAdvice;
+  if (!lifestyle) return;
+
+  const dateEl = document.getElementById('lifestyle-date-val');
+  if (dateEl) {
+    const dStr = state.selectedDate || '';
+    dateEl.textContent = dStr ? `${dStr} (${formatWeekday(dStr)}) · ${state.currentRegion}` : `${state.currentRegion}`;
+  }
+
+  // 1. 雨量／降雨預報（帶傘建議）
+  if (lifestyle.umbrella) {
+    const u = lifestyle.umbrella;
+    const badgeEl = document.getElementById('umbrella-badge');
+    if (badgeEl) {
+      badgeEl.textContent = u.badge || u.status;
+      badgeEl.className = `ls-badge badge-${u.level || 'low'}`;
+    }
+    const popEl = document.getElementById('umbrella-pop-val');
+    if (popEl) {
+      popEl.textContent = u.pop_value != null ? `${u.pop_value}%` : '無此期間資料';
+    }
+    const boxEl = document.getElementById('umbrella-verdict-box');
+    if (boxEl) {
+      boxEl.className = `ls-verdict-box level-${u.level || 'low'}`;
+    }
+    const statusEl = document.getElementById('umbrella-status');
+    if (statusEl) statusEl.textContent = `${u.level === 'high' ? '☔' : u.level === 'medium' ? '🌂' : '☀️'} ${u.status}`;
+    const adviceEl = document.getElementById('umbrella-advice');
+    if (adviceEl) adviceEl.textContent = u.advice;
+    const ruleEl = document.getElementById('umbrella-rule');
+    if (ruleEl) ruleEl.innerHTML = `<strong>判斷依據：</strong>${u.rule_explanation || '≥60% 建議帶傘 · 30%~59% 可自行斟酌 · <30% 無需帶傘'}`;
+  }
+
+  // 2. 空氣品質（口罩建議）
+  if (lifestyle.air_quality) {
+    const a = lifestyle.air_quality;
+    const badgeEl = document.getElementById('aqi-badge');
+    if (badgeEl) {
+      badgeEl.textContent = a.badge || a.status;
+      badgeEl.className = `ls-badge badge-${a.level || 'good'}`;
+    }
+    const aqiEl = document.getElementById('aqi-val');
+    if (aqiEl) {
+      aqiEl.textContent = a.aqi_value != null ? `${a.aqi_value}` : '無此期間資料';
+    }
+    const typeLabel = document.getElementById('aqi-type-label');
+    if (typeLabel) typeLabel.textContent = a.data_type || '目前觀測值';
+    const siteInfo = document.getElementById('aqi-site-info');
+    if (siteInfo) {
+      siteInfo.textContent = `測站：${a.site_name || state.currentRegion} · 觀測時間：${a.obs_time || '即時'}`;
+    }
+    const boxEl = document.getElementById('aqi-verdict-box');
+    if (boxEl) {
+      boxEl.className = `ls-verdict-box level-${a.level || 'good'}`;
+    }
+    const statusEl = document.getElementById('aqi-status');
+    if (statusEl) statusEl.textContent = `${a.level === 'good' ? '🍃' : a.level === 'orange' || a.level === 'unhealthy' ? '😷' : '🫧'} ${a.status}`;
+    const adviceEl = document.getElementById('aqi-advice');
+    if (adviceEl) adviceEl.textContent = a.advice;
+    const ruleEl = document.getElementById('aqi-rule');
+    if (ruleEl) ruleEl.innerHTML = `<strong>指標說明：</strong>${a.guideline || '本分級提供日常戶外生活參考，非個人專屬醫療診斷處方。'}`;
+  }
+
+  // 3. 颱風資訊（物資建議）
+  if (lifestyle.typhoon) {
+    const t = lifestyle.typhoon;
+    const badgeEl = document.getElementById('typhoon-badge');
+    if (badgeEl) {
+      badgeEl.textContent = t.badge || (t.is_warning_active ? '警戒防颱' : '常態巡邏');
+      badgeEl.className = `ls-badge badge-${t.level || (t.is_warning_active ? 'danger' : 'good')}`;
+    }
+    const statusHead = document.getElementById('typhoon-status-headline');
+    if (statusHead) {
+      statusHead.textContent = t.status;
+      if (t.is_warning_active) {
+        statusHead.style.color = '#E63946';
+      } else if (t.is_error) {
+        statusHead.style.color = '#B7791F';
+      } else {
+        statusHead.style.color = '#2D6A4F';
+      }
+    }
+    const areaInfo = document.getElementById('typhoon-area-info');
+    if (areaInfo) {
+      areaInfo.textContent = t.affected_areas && t.affected_areas !== '無'
+        ? `警戒區域：${t.affected_areas} · 發布時間：${t.issue_time || '最新'}`
+        : `最新查驗時間：${t.issue_time || '即時'} · 無陸上海上警報`;
+    }
+    const boxEl = document.getElementById('typhoon-verdict-box');
+    if (boxEl) {
+      boxEl.className = `ls-verdict-box level-${t.level || (t.is_warning_active ? 'danger' : 'good')}`;
+    }
+    const statusEl = document.getElementById('typhoon-status');
+    if (statusEl) statusEl.textContent = `${t.is_warning_active ? '🚨' : t.is_error ? '⚠️' : '🛡️'} ${t.status}`;
+    const adviceEl = document.getElementById('typhoon-advice');
+    if (adviceEl) adviceEl.textContent = t.advice;
+  }
+}
+
 // ----------------------------------------------------------------------------
-// Fix Issue 1: 今日氣溫絕不遮擋 (Natural vertical flow with clean tag pill)
+// Fix Issue 1: 今日氣溫絕不遮擋 & 解決「兩個今日天氣」問題
 // ----------------------------------------------------------------------------
 function renderForecastCards() {
   const container = document.getElementById('forecast-cards');
@@ -206,13 +319,26 @@ function renderForecastCards() {
 
   container.innerHTML = '';
   const forecasts = state.selectedForecasts;
+  if (!forecasts || forecasts.length === 0) return;
 
   const todayStr = new Date().toISOString().slice(0, 10);
+  const todayMatchIdx = forecasts.findIndex(f => f.dataDate === todayStr);
+  const targetTodayIdx = todayMatchIdx !== -1 ? todayMatchIdx : 0;
+
+  if (!state.selectedDate) {
+    state.selectedDate = forecasts[targetTodayIdx].dataDate;
+  }
 
   forecasts.forEach((f, idx) => {
     const card = document.createElement('div');
-    const isToday = (idx === 0 || f.dataDate === todayStr);
-    card.className = `forecast-card ${isToday ? 'today' : ''}`;
+    // 嚴格保證只有單一且唯一的一張卡片判定為 isToday
+    const isToday = (idx === targetTodayIdx);
+    const isSelected = (f.dataDate === state.selectedDate);
+    card.className = `forecast-card ${isToday ? 'today' : ''} ${isSelected ? 'selected-day' : ''}`;
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.setAttribute('title', `點擊切換 ${f.dataDate} 之生活建議與氣象詳情`);
+    card.style.cursor = 'pointer';
 
     const { icon, desc } = getWeatherIcon(f.mint, f.maxt, idx);
     const dateFormatted = formatDateShort(f.dataDate);
@@ -235,9 +361,19 @@ function renderForecastCards() {
       <div class="fc-desc">${desc}</div>
     `;
 
+    card.addEventListener('click', () => {
+      selectDate(f.dataDate);
+    });
+
     container.appendChild(card);
   });
 }
+
+window.selectDate = function(dateStr) {
+  if (state.selectedDate === dateStr) return;
+  state.selectedDate = dateStr;
+  fetchWeatherData(state.currentRegion, false, dateStr);
+};
 
 // ============================================================================
 // 3. Chart.js Spline Line Chart (The Powerpuff Girls Edition)
@@ -446,11 +582,10 @@ function renderMapMarkers() {
   });
 }
 
-// Global selector helper for popup button
+// Global selector helper for popup button and quick pills
 window.selectRegion = function(reg) {
-  if (state.currentRegion === reg) return;
   state.currentRegion = reg;
-  fetchWeatherData(reg);
+  fetchWeatherData(reg, false, state.selectedDate);
 };
 
 // ============================================================================

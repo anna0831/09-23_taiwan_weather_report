@@ -42,6 +42,11 @@
         </p>
       </div>
 
+      <!-- Powerpuff Girls Mascot Avatar -->
+      <div class="hero-character-wrap">
+        <img src="/powerpuff_girls.png" alt="飛天小女警 花花、泡泡與毛毛" class="hero-ppg-img" id="hero-ppg-avatar" />
+      </div>
+
       <div class="hero-right">
         <div class="sync-status-card ppg-card-pop">
           <div class="pulse-indicator">
@@ -131,6 +136,101 @@
             <span class="metric-unit">°C</span>
           </div>
           <span class="metric-desc">小心著涼，充滿活力！</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 💖 飛天小女警生活特派建議卡片 (Three Lifestyle Advice Cards) -->
+    <section class="lifestyle-section" id="lifestyle-section">
+      <div class="card-header-flex">
+        <div>
+          <h2 class="section-title">✨ 飛天小女警特派生活指引 (Daily Lifestyle Advice)</h2>
+          <p class="card-subtitle">
+            🌸 花花、🫧 泡泡與 ⚡ 毛毛為您檢視出門守護重點 · 嚴格依官方數據事實與生活規則客觀評估
+          </p>
+        </div>
+        <div class="lifestyle-date-badge" id="lifestyle-date-badge">
+          📅 觀測日期：<span id="lifestyle-date-val">載入中...</span>
+        </div>
+      </div>
+
+      <div class="lifestyle-grid">
+        <!-- 1. 雨量／降雨預報卡片：「今天要帶雨傘嗎？」 -->
+        <div class="lifestyle-card ppg-panel card-umbrella" id="card-umbrella">
+          <div class="ls-card-header">
+            <div class="ls-icon-box ls-umbrella-icon">☔</div>
+            <div class="ls-title-wrap">
+              <span class="ls-badge" id="umbrella-badge">特派評估中</span>
+              <h3 class="ls-card-title">今天要帶雨傘嗎？</h3>
+            </div>
+          </div>
+          <div class="ls-main-metric">
+            <span class="ls-metric-label">降雨機率 (PoP)</span>
+            <div class="ls-metric-num" id="umbrella-pop-val">--%</div>
+            <span class="ls-metric-notice">※ 本項指標為降雨機率，非預測累積雨量</span>
+          </div>
+          <div class="ls-verdict-box" id="umbrella-verdict-box">
+            <div class="ls-verdict-status" id="umbrella-status">載入中...</div>
+            <p class="ls-verdict-advice" id="umbrella-advice">正在取得氣象署降雨機率預報...</p>
+          </div>
+          <div class="ls-meta-footer">
+            <div class="ls-rule-exp" id="umbrella-rule">
+              <strong>判斷依據：</strong>≥60% 建議帶傘 · 30%~59% 可自行斟酌 · &lt;30% 無需帶傘
+            </div>
+            <div class="ls-source-tag">來源：交通部中央氣象署 (CWA) 預報資料</div>
+          </div>
+        </div>
+
+        <!-- 2. 空氣品質卡片：「今天要戴口罩嗎？」 -->
+        <div class="lifestyle-card ppg-panel card-mask" id="card-mask">
+          <div class="ls-card-header">
+            <div class="ls-icon-box ls-mask-icon">😷</div>
+            <div class="ls-title-wrap">
+              <span class="ls-badge" id="aqi-badge">觀測分析中</span>
+              <h3 class="ls-card-title">今天要戴口罩嗎？</h3>
+            </div>
+          </div>
+          <div class="ls-main-metric">
+            <span class="ls-metric-label">空氣品質指標 (AQI) · <strong id="aqi-type-label">目前觀測值</strong></span>
+            <div class="ls-metric-num" id="aqi-val">--</div>
+            <span class="ls-metric-notice" id="aqi-site-info">測站：-- · 觀測時間：--</span>
+          </div>
+          <div class="ls-verdict-box" id="aqi-verdict-box">
+            <div class="ls-verdict-status" id="aqi-status">載入中...</div>
+            <p class="ls-verdict-advice" id="aqi-advice">正在取得環境部空氣品質觀測...</p>
+          </div>
+          <div class="ls-meta-footer">
+            <div class="ls-rule-exp" id="aqi-rule">
+              <strong>指標說明：</strong>本分級提供日常戶外生活參考，非個人專屬醫療診斷處方。
+            </div>
+            <div class="ls-source-tag">來源：環境部 (MOENV) 空氣品質監測網</div>
+          </div>
+        </div>
+
+        <!-- 3. 颱風資訊卡片：「需要提前準備物資嗎？」 -->
+        <div class="lifestyle-card ppg-panel card-typhoon" id="card-typhoon">
+          <div class="ls-card-header">
+            <div class="ls-icon-box ls-typhoon-icon">🌀</div>
+            <div class="ls-title-wrap">
+              <span class="ls-badge" id="typhoon-badge">即時查驗中</span>
+              <h3 class="ls-card-title">需要提前準備物資嗎？</h3>
+            </div>
+          </div>
+          <div class="ls-main-metric">
+            <span class="ls-metric-label">官方颱風警報狀態</span>
+            <div class="ls-metric-num text-sm-status" id="typhoon-status-headline">查驗中...</div>
+            <span class="ls-metric-notice" id="typhoon-area-info">警戒區域：--</span>
+          </div>
+          <div class="ls-verdict-box" id="typhoon-verdict-box">
+            <div class="ls-verdict-status" id="typhoon-status">載入中...</div>
+            <p class="ls-verdict-advice" id="typhoon-advice">正在連線氣象署颱風警報資料庫...</p>
+          </div>
+          <div class="ls-meta-footer">
+            <div class="ls-rule-exp" id="typhoon-rule">
+              <strong>防備依據：</strong>僅於發布海上/陸上警報且明確影響時提醒防備；常態時請安心。
+            </div>
+            <div class="ls-source-tag">來源：交通部中央氣象署 (CWA) 颱風警報</div>
+          </div>
         </div>
       </div>
     </section>

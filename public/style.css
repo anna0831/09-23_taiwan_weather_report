@@ -206,6 +206,30 @@ body.ppg-theme {
   font-weight: 600;
 }
 
+/* Powerpuff Girls Mascot Avatar in Hero */
+.hero-character-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0 10px;
+}
+
+.hero-ppg-img {
+  height: 98px;
+  width: auto;
+  max-width: 140px;
+  object-fit: contain;
+  filter: drop-shadow(4px 4px 0px var(--comic-ink));
+  transition: var(--bouncy-transition);
+  user-select: none;
+}
+
+.hero-ppg-img:hover {
+  transform: scale(1.08) rotate(-3deg);
+  filter: drop-shadow(6px 6px 0px var(--comic-ink));
+}
+
 .hero-right {
   display: flex;
   align-items: center;
@@ -906,6 +930,201 @@ body.ppg-theme {
 .pill-table-low {
   background: var(--ppg-bubbles-light);
   color: var(--ppg-bubbles-blue);
+}
+
+/* --------------------------------------------------------------------------
+   Lifestyle Advice Cards (飛天小女警特派生活建議)
+   -------------------------------------------------------------------------- */
+.lifestyle-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.lifestyle-date-badge {
+  background: #FFFFFF;
+  border: 2px solid var(--comic-ink);
+  box-shadow: 2px 2px 0px var(--comic-ink);
+  border-radius: var(--radius-full);
+  padding: 6px 16px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--text-main);
+  align-self: flex-start;
+}
+
+.lifestyle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 22px;
+}
+
+.lifestyle-card {
+  padding: 24px 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-radius: var(--radius-xl);
+  position: relative;
+  overflow: hidden;
+  transition: var(--bouncy-transition);
+}
+
+.lifestyle-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+}
+
+.card-umbrella::before { background: linear-gradient(90deg, #FF3377, #FF80AB); }
+.card-mask::before { background: linear-gradient(90deg, #00B4D8, #90E0EF); }
+.card-typhoon::before { background: linear-gradient(90deg, #52B72A, #FFB703); }
+
+.lifestyle-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--comic-shadow-hover);
+}
+
+.ls-card-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.ls-icon-box {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  border: 2px solid var(--comic-ink);
+  box-shadow: 3px 3px 0px var(--comic-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  flex-shrink: 0;
+}
+
+.ls-umbrella-icon { background: var(--ppg-blossom-light); }
+.ls-mask-icon { background: var(--ppg-bubbles-light); }
+.ls-typhoon-icon { background: var(--ppg-buttercup-light); }
+
+.ls-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ls-badge {
+  display: inline-block;
+  align-self: flex-start;
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--comic-ink);
+  box-shadow: 1.5px 1.5px 0px var(--comic-ink);
+  background: #FFF;
+  color: var(--comic-ink);
+}
+
+.ls-badge.badge-high { background: var(--ppg-blossom-light); color: var(--ppg-blossom-pink); }
+.ls-badge.badge-medium { background: var(--ppg-star-light); color: #B7791F; }
+.ls-badge.badge-low { background: var(--ppg-bubbles-light); color: #0077B6; }
+.ls-badge.badge-good { background: var(--ppg-buttercup-light); color: #2D6A4F; }
+.ls-badge.badge-danger { background: #FFE5E5; color: #D90429; }
+
+.ls-card-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--comic-ink);
+  line-height: 1.2;
+}
+
+.ls-main-metric {
+  background: #FAF8FF;
+  border: 1.5px solid #E5DCF5;
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.ls-metric-label {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  display: block;
+}
+
+.ls-metric-num {
+  font-size: 2.1rem;
+  font-weight: 800;
+  color: var(--comic-ink);
+  line-height: 1.2;
+  margin: 4px 0;
+}
+
+.ls-metric-num.text-sm-status {
+  font-size: 1.45rem;
+}
+
+.ls-metric-notice {
+  font-size: 0.74rem;
+  color: var(--text-light);
+  font-weight: 600;
+  display: block;
+}
+
+.ls-verdict-box {
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  border: 2px solid var(--comic-ink);
+  box-shadow: 2px 2px 0px var(--comic-ink);
+  background: #FFFFFF;
+}
+
+.ls-verdict-box.level-high { background: #FFF0F5; border-color: var(--ppg-blossom-pink); }
+.ls-verdict-box.level-medium { background: #FFFDEB; border-color: #FFB703; }
+.ls-verdict-box.level-low { background: #F0FBFF; border-color: var(--ppg-bubbles-blue); }
+.ls-verdict-box.level-good { background: #F0FFF4; border-color: var(--ppg-buttercup-green); }
+.ls-verdict-box.level-danger { background: #FFF0F0; border-color: #E63946; }
+
+.ls-verdict-status {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--comic-ink);
+  margin-bottom: 4px;
+}
+
+.ls-verdict-advice {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-main);
+  line-height: 1.45;
+}
+
+.ls-meta-footer {
+  border-top: 1.5px dashed #E2D9F3;
+  padding-top: 12px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ls-rule-exp {
+  line-height: 1.4;
+}
+
+.ls-source-tag {
+  color: var(--text-light);
+  font-weight: 600;
 }
 
 /* --------------------------------------------------------------------------

@@ -29,14 +29,16 @@
 
 ---
 
-## 🎯 五大核心開發階段 (5-Stage Architecture)
+## 🎯 核心開發階段 (Core Stages)
 
-本專案依據作業規範與軟體工程最佳實踐，劃分為五大漸進式關卡（Gate 1 ~ Gate 5）：
+本專案依據作業規範與軟體工程最佳實踐，劃分為六大漸進式關卡（Gate 1 ~ Gate 6）：
 
 ```
 [Stage 1: CWA API Ingestion] ──> [Stage 2: JSON Parsing & ETL]
                                          │
 [Stage 5: Map Visualization] <── [Stage 4: Web Dashboard] <── [Stage 3: SQLite Storage]
+                                         │
+                   [Stage 6: Lifestyle Advice Cards & PPG Expansion]
 ```
 
 | 階段 | 階段名稱 | 關鍵職責 | 核心產出檔案 | 完成標準 (DoD) |
@@ -46,12 +48,13 @@
 | **Stage 3** | **SQLite 資料庫儲存** | 設計 `TemperatureForecasts` 表，實作 UPSERT（防重防呆）與參數化查詢 | `src/db.py`, `data/data.db` | ✅ 重複執行時更新不重複，杜絕 SQL Injection |
 | **Stage 4** | **互動氣象 Web App** | 打造雙色平滑折線圖、7天預報卡片與即時縣市切換儀表板 | `public/index.html`, `public/app.js`, `app.py` | ✅ 雙平台（Vercel & Streamlit）皆流暢自適應 |
 | **Stage 5** | **台灣地圖視覺化** | 呈現全台氣溫分級色彩地圖、Popup 彈窗、完全移除底圖浮水印 | `public/app.js`, `src/config.py` | ✅ 無任何第三方水印，點擊標籤即時聯動切換地區 |
+| **Stage 6** | **生活建議卡片與主題擴充** | 擴充雨傘建議、即時空氣品質、颱風警戒卡片，修復三大歷史缺陷 | `src/lifestyle.py`, `public/app.js`, `public/index.html`, `app.py` | ✅ 27 項測試全數通過，遵循非醫療與正確術語約束 |
 
 ---
 
 ## 🛠️ 開發歷程與步驟記錄 (Develop Steps By Steps)
 
-以下完整記錄本專案從零到有的開發與重構歷程：
+以下完整記錄本專案從零到有的開發、重構與擴充歷程：
 
 ### Step 1：專案基礎設施與安全規範建立
 * 初始化 Git 儲存庫，建立標準目錄結構（`src/`、`tests/`、`data/`）。
@@ -99,6 +102,73 @@
 * **唯讀環境問題解決**：Vercel 執行環境（`/var/task`）為唯讀檔案系統，在 `src/config.py` 實作動態映射，自動將資料庫導向至可讀寫的 `/tmp/data.db`。
 * **相容性修復**：補齊 `fetch_cwa_forecast = fetch_cwa_json` 與 `parse_forecast_json = parse_weather_json` 函式別名，使線上同步一鍵順暢完成。
 
+### Step 10：缺陷修復與三大歷史問題徹底排除
+* **「兩個今日天氣」修復**：在 `public/app.js` 採用精準陣列比對（`findIndex`），在 7 天卡片迴圈中只判定第一個符合今日或第 3 項為 Today，徹底杜絕畫面出現重複標籤。
+* **「熱門巡邏點無法點擊」修復**：熱門巡邏點原本包含「臺北市」、「新北市」、「臺中市」、「高雄市」，但在舊版資料庫中僅預置六大區域。修復方案為在 `src/db.py` 預載此四個主要都會區資料，並在 `public/app.js` 與 `api/weather.py` 完善狀態同步與按鈕 active 樣式切換。
+* **「最後同步時間錯誤」修復**：清除 `api/weather.py` 中寫死的 `"2026-09-23 11:17:26"` fallback 字串，改由 `SyncMetadata` 表記錄實際同步時間，無紀錄時回傳當前動態時間，不再顯示過期時間。
+
+### Step 11：三大生活建議卡片架構實作與解耦設計
+* 建立 `src/lifestyle.py` 純粹業務邏輯模組，將事實數據（Facts）、閾值標準（Thresholds）、文案呈現（Copywriting）完全解耦，易於單獨進行單元測試。
+* 支援降雨機率（帶傘決策）、空氣品質（AQI 戴口罩提醒）、颱風警報（防颱物資建議）三大生活卡片，並支援點擊 7 天預報卡片即時切換日期聯動更新。
+
+### Step 12：飛天小女警特派員形象整合
+* 將特派員全體合照放置於 `public/powerpuff_girls.png`。
+* 於 Vercel Web 端 Header 嵌入圓形普普風頭像，並於 Streamlit 端加入特派員形象卡片。
+* 採用 `object-fit: contain` 與彈性邊框，確保在桌面與手機行動裝置上均不變形、不裁切臉部。
+
+---
+
+## ☂️ 三大生活建議卡片規格與決策依據 (Lifestyle Advice Cards)
+
+為提升民眾出門實用性，本氣象站擴充三張直覺的生活建議卡片，並遵循嚴謹的資料與語意規範：
+
+| 卡片名稱 | 核心提問 | 官方資料來源 | 指標與名稱規範 | 判定規則與建議文字 | 限制與免責聲明 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **雨量／降雨預報卡** | 今天要帶雨傘嗎？ | 交通部中央氣象署 (CWA) 7天預報端點 | **降雨機率 (PoP)**<br>*(嚴禁稱為「預測雨量」)* | 🌧️ **≥ 60%**：建議帶傘（出門必備雨具）<br>⛅ **30% ~ 59%**：可自行斟酌（備傘為宜）<br>☀️ **< 30%**：無需帶傘（降雨機率低）<br>❓ **無資料**：資料不足 | 僅反映降雨機率（百分比），非累積降雨量（毫米）。介面清楚揭示時間範圍與更新時間。 |
+| **空氣品質卡** | 今天要戴口罩嗎？ | 環境部 (MOENV) 空氣品質監測資料 | **空氣品質指標 (AQI)**<br>*(即時測站實測數據)* | 🟢 **0 ~ 50**：良好（日常舒適，正常活動）<br>🟡 **51 ~ 100**：普通（日常防護，敏感族群注意）<br>🟠 **101 ~ 150**：對敏感族群不健康（建議佩戴口罩）<br>🔴 **> 150**：對所有族群不健康（外出建議佩戴口罩） | **嚴格區分「目前觀測值」與未來預報**。測站資料為即時觀測，未來日期標註「無此期間資料」。本分級為一般生活建議，**非個人專屬醫療處方**。 |
+| **颱風資訊卡** | 需要提前準備物資嗎？ | 交通部中央氣象署 (CWA) 颱風警報 | **颱風警報發布狀態**<br>*(警報種類、警戒分區)* | 🚨 **警報發布中**：提前準備物資（檢視防颱儲備、固定門窗）<br>🍃 **常態（無警報）**：目前無相關警報（維持常態巡邏）<br>⚠️ **連線異常**：**資料暫時無法取得** | **嚴禁將 API 失敗當作無颱風**！連線異常時明確回報錯誤狀態，並顯示最後更新時間與官方查詢連結。 |
+
+---
+
+## 🐛 重現與修復缺陷清單 (Bug Fixes)
+
+| 缺陷項目 | 原始現象（重現步驟） | 根因分析 (Root Cause) | 修復策略與修改檔案 |
+| :--- | :--- | :--- | :--- |
+| **兩個今日天氣** | 進入首頁預報清單時，清單內同時出現兩張帶有「Today / 今日天氣」標籤的卡片。 | 舊程式碼在卡片生成迴圈中使用了重複的寬鬆日期比對或同時將固定 index 2 與比對命中者皆標記為 Today。 | 在 `public/app.js` 中先以 `findIndex` 鎖定唯一的主目標索引（`targetTodayIdx`），在渲染迴圈中嚴格以 `idx === targetTodayIdx` 判定，保證全畫面僅有唯一一張今日卡片。 |
+| **熱門巡邏點無法點擊** | 點擊上方熱門巡邏點「臺北市」、「新北市」、「臺中市」、「高雄市」藥丸按鈕時，選中樣式未切換或內容未更新。 | 1. 舊資料庫 Mock 資料中僅預置六大區域，無四個直轄市名稱。<br>2. 前端 `selectRegion()` 中比對邏輯在點選相同選區時直接 return，且未正確觸發資料請求。 | 1. 在 `src/db.py` 預載資料中加入四大熱門都會區資料。<br>2. 修改 `public/app.js` 的 `selectRegion()`，即時更新按鈕 `.active` 類別並主動重拉 `/api/weather` 資料。 |
+| **最後同步時間錯誤** | 頁面上方資料最後同步時間永遠固定顯示為 `2026-09-23 11:17:26`。 | `api/weather.py` 中寫死了 fallback 時間字串 `"2026-09-23 11:17:26"`，未從資料庫動態讀取。 | 在 `src/db.py` 建立 `SyncMetadata` 表記錄實際同步時間，並於 `api/weather.py` 動態取出；無紀錄時以當前即時時間呈現，徹底移除寫死字串。 |
+
+---
+
+## ☁️ Vercel Serverless 資料庫快取與失效策略 (/tmp Caching Strategy)
+
+在 Vercel Serverless Function 部署環境中，運行時根目錄（`/var/task`）為**唯讀檔案系統 (Read-Only Filesystem)**，無法直接建立或修改 SQLite 檔案。
+
+### 1. 儲存路徑映射
+* 本專案透過 `src/config.py` 動態判斷環境：當偵測到 Vercel 雲端環境時，自動將 `DB_PATH` 導向至可讀寫的 `/tmp/data.db`。
+
+### 2. 快取生命週期 (Cache Lifecycle)
+* **/tmp 特性**：同一 Serverless 執行個體（Container Instance）在處於暖機（Warm）狀態時，`/tmp` 目錄內的檔案會被保留並重複使用。
+* **資料庫初始化**：若執行個體遭遇冷啟動（Cold Start）或換機，系統自動偵測 `/tmp/data.db` 是否存在，若無則呼叫 `init_db()` 自動建表並注入完整種子預報資料。
+
+### 3. 快取更新與失效機制 (Cache Invalidation)
+* 透過 `SyncMetadata` 紀錄最後同步時間 `last_sync`。
+* 呼叫 `/api/weather?action=sync` 或定時抓取時，資料庫使用 `UPSERT (ON CONFLICT DO UPDATE)` 原子操作更新紀錄。
+* 前端設定 5 分鐘自動刷新機制，確保使用者總是看到最新的氣象與警報數據。
+
+---
+
+## 🔑 環境變數設定 (Environment Variables)
+
+於本機開發時請建立 `.env` 檔案；於 Vercel 部署時請至 **Project Settings -> Environment Variables** 設定：
+
+| 變數名稱 | 必填 / 選用 | 說明 | 範例 |
+| :--- | :---: | :--- | :--- |
+| `CWA_API_KEY` | **必填** (生產同步) | 中央氣象署氣象資料開放平臺授權碼，用於存取一週氣溫、降雨機率及颱風警報 | `CWA-XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX` |
+| `MOENV_API_KEY` | 選用 | 環境部空氣品質開放資料授權碼（若無設定，系統自動使用開放觀測端點或高品質種子資料） | `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` |
+
+*(註：若未填寫 API Key，系統將啟動全功能離線安全展示模式，確保介面與 27 項自動化測試隨時可用)*
+
 ---
 
 ## 📂 專案檔案目錄結構
@@ -106,31 +176,34 @@
 ```
 0923 天氣預測/
 ├── api/
-│   ├── weather.py            # Vercel Serverless Function (/api/weather)
+│   ├── weather.py            # Vercel Serverless Function (/api/weather, 支援生活卡片與動態時間)
 │   └── requirements.txt      # Vercel 後端依賴 (requests, pandas, urllib3)
 ├── public/
-│   ├── index.html            # 前端 HTML5 (飛天小女警特派氣象站)
-│   ├── style.css             # Vanilla CSS (飛天小女警主題、漫畫普普風、無浮水印)
-│   └── app.js                # 前端互動邏輯 (Chart.js 平滑曲線、Leaflet 地圖、5分鐘自動更新)
+│   ├── index.html            # 前端 HTML5 (飛天小女警特派氣象站 + 三大生活卡片 + 特派員形象)
+│   ├── style.css             # Vanilla CSS (Neo-Brutalism 普普漫畫風、純淨無浮水印、響應式)
+│   ├── app.js                # 前端互動邏輯 (7天卡片切換、生活建議聯動、唯一 Today 標籤)
+│   └── powerpuff_girls.png   # 飛天小女警特派員形象圖檔
 ├── src/
 │   ├── __init__.py           # 套件識別檔
 │   ├── config.py             # 系統常數、全台座標定義、Vercel /tmp 資料庫路徑映射
-│   ├── db.py                 # SQLite 連線、UPSERT 防重防呆、參數化查詢
-│   └── fetch_data.py         # CWA API 抓取、SSL 相容性處理、歷史回補、一站式同步
+│   ├── db.py                 # SQLite 連線、UPSERT 防重、SyncMetadata、空品與颱風資料表
+│   ├── fetch_data.py         # CWA API 抓取、PoP 降雨機率解析、MOENV 空品、CWA 颱風警報
+│   └── lifestyle.py          # 三大生活建議卡片純商業邏輯（帶傘、口罩、防颱決策模組）
 ├── tests/
 │   ├── __init__.py
 │   ├── test_weather_app.py   # 資料庫、API 解析、分色邏輯單元測試 (離線運行)
-│   └── test_vercel_api.py    # Vercel 本機伺服器與 API 端點整合測試
+│   ├── test_vercel_api.py    # Vercel 本機伺服器、靜態資產與 API 端點整合測試
+│   └── test_lifestyle_cards.py # 雨傘、口罩、颱風卡片閾值、術語與容錯邏輯單元測試
 ├── .github/
 │   └── workflows/
 │       └── ci.yml            # GitHub Actions 自動化 CI 工作流程
-├── app.py                    # Streamlit 課程作業版 (已修正圖示與飛天小女警主題)
+├── app.py                    # Streamlit 課程作業版 (已整合三大生活建議卡片與小女警形象)
 ├── dev_server.py             # 本機一鍵開發伺服器 (http://localhost:3000)
 ├── package.json              # npm 腳本設定檔
 ├── vercel.json               # Vercel 部署路由設定
 ├── requirements.txt          # 本機 Python 套件依賴
 ├── .env.example              # API Key 環境變數範例
-├── WORKFLOW.md               # HW10 開發流程檢核報告 (Gate 1 ~ Gate 5)
+├── WORKFLOW.md               # HW10 開發流程檢核報告 (Gate 1 ~ Gate 6)
 └── README.md                 # 專案完整說明文件
 ```
 
@@ -148,7 +221,7 @@ pip install -r requirements.txt
 若欲同步最新氣象資料：
 1. 複製範本建立 `.env`：
    ```bash
-   copy .env.example .env
+   cp .env.example .env
    ```
 2. 在 `.env` 填入您的 CWA API Key：
    ```env
@@ -183,7 +256,7 @@ streamlit run app.py
 1. **推送最新程式碼至 GitHub**：
    ```bash
    git add .
-   git commit -m "feat: complete 5-stage weather app with ppg theme"
+   git commit -m "feat: complete lifestyle cards, bug fixes, and ppg expansion"
    git push origin main
    ```
 2. **在 Vercel 匯入專案**：
@@ -198,7 +271,7 @@ streamlit run app.py
 
 ## 🧪 自動化測試驗證
 
-本專案內建完整的離線測試套件：
+本專案內建完整的離線單元測試與整合測試套件，涵蓋三套測試模組共 **27 項測試**：
 ```bash
 # 執行所有單元測試與端點測試
 python -m unittest discover -s tests
@@ -206,12 +279,19 @@ python -m unittest discover -s tests
 # 語法編譯檢查
 python -m compileall src api tests app.py dev_server.py
 ```
-**驗證成果**：全數 12 項測試皆通過（Ran 12 tests, OK）。
+**驗證成果**：全數 27 項測試皆通過（Ran 27 tests in 0.166s, OK）：
+1. `tests/test_weather_app.py`（8 項）：資料庫初始化、UPSERT 防重、JSON 氣溫剖析、平均溫分色、多時段彙整。
+2. `tests/test_lifestyle_cards.py`（12 項）：帶傘建議閾值（60%/30%/無資料）、降雨機率術語驗證（非預測雨量）、AQI 各級口罩建議、非醫療處方警語驗證、測站觀測 vs 未來預報區分、颱風警報狀態、API 異常時之「資料暫時無法取得」容錯。
+3. `tests/test_vercel_api.py`（7 項）：靜態資產載入（HTML, CSS, JS, PNG 圖片）、`/api/weather` 端點回應結構、熱門巡邏點切換、生活建議欄位結構完整性。
 
 ---
 
-## 💖 致謝與授權
+## 💖 致謝、授權與版權聲明
 
-* **資料來源**：[中華民國交通部中央氣象署氣象資料開放平臺](https://opendata.cwa.gov.tw/) (CWA Open Data)
-* **主題靈感**：Cartoon Network 經典動畫《飛天小女警》(The Powerpuff Girls)
-* **軟體授權**：本專案採用 [MIT License](LICENSE) 授權釋出。
+* **氣象資料來源**：[中華民國交通部中央氣象署氣象資料開放平臺](https://opendata.cwa.gov.tw/) (CWA Open Data)
+* **空氣品質來源**：[中華民國環境部空氣品質監測網](https://airtw.moenv.gov.tw/) (MOENV Open Data)
+* **主題形象與著作權聲明**：
+  * 本專案視覺主題與角色形象（花花 Blossom、泡泡 Bubbles、毛毛 Buttercup）之著作權及商標權屬於原版權方 **Cartoon Network / Warner Bros. Discovery** 所有。
+  * 本專案僅用於程式設計課程學習、技術研究與非營利成果展示。若欲進行公開商用部署或衍生散佈，請務必替換為具備合法授權或自創之原創視覺資產。
+* **軟體程式碼授權**：本專案軟體原始碼採用 [MIT License](LICENSE) 授權釋出。
+

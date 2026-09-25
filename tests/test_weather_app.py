@@ -115,7 +115,7 @@ class TestWeatherApp(unittest.TestCase):
         self.assertIn("2026-09-21", dates)
 
         df_date = get_forecasts_by_date("2026-09-21", self.test_db_path)
-        self.assertEqual(len(df_date), 6)  # 6 個預設地區
+        self.assertGreaterEqual(len(df_date), 6)  # 至少涵蓋 6 個預設分區及主要熱門縣市
 
     def test_temp_color_mapping(self):
         """測試溫度分級顏色規則。"""

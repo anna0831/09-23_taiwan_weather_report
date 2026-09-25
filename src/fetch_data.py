@@ -93,7 +93,7 @@ def parse_weather_json(data: Dict[str, Any]) -> pd.DataFrame:
 
             for elem in loc.get("WeatherElement", []):
                 elem_name = elem.get("ElementName", "")
-                if elem_name not in ["最高溫度", "最低溫度", "MaxT", "MinT"]:
+                if elem_name not in ["最高溫度", "最低溫度", "MaxT", "MinT", "12小時降雨機率", "PoP12h", "降雨機率", "PoP"]:
                     continue
 
                 for t_item in elem.get("Time", []):
@@ -106,7 +106,12 @@ def parse_weather_json(data: Dict[str, Any]) -> pd.DataFrame:
                     if not val_list:
                         continue
                     val_dict = val_list[0]
-                    raw_val = val_dict.get("MaxTemperature") or val_dict.get("MinTemperature") or val_dict.get("value")
+                    raw_val = (
+                        val_dict.get("ProbabilityOfPrecipitation")
+                        or val_dict.get("MaxTemperature")
+                        or val_dict.get("MinTemperature")
+                        or val_dict.get("value")
+                    )
 
                     try:
                         temp_val = float(raw_val)
@@ -115,18 +120,23 @@ def parse_weather_json(data: Dict[str, Any]) -> pd.DataFrame:
 
                     key = (county_name, data_date)
                     if key not in county_daily_temps:
-                        county_daily_temps[key] = {"min": [], "max": []}
+                        county_daily_temps[key] = {"min": [], "max": [], "pop": []}
 
                     if elem_name in ["最低溫度", "MinT"]:
                         county_daily_temps[key]["min"].append(temp_val)
                     elif elem_name in ["最高溫度", "MaxT"]:
                         county_daily_temps[key]["max"].append(temp_val)
+                    elif elem_name in ["12小時降雨機率", "PoP12h", "降雨機率", "PoP"]:
+                        county_daily_temps[key]["pop"].append(temp_val)
 
         # 整理單一縣市數據
         region_aggregation: Dict[Tuple[str, str], Dict[str, List[float]]] = {}
 
         for (c_name, d_date), temps in county_daily_temps.items():
             min_l, max_l = temps["min"], temps["max"]
+            pop_l = temps.get("pop", [])
+            c_pop = max(pop_l) if pop_l else None
+
             if min_l and max_l:
                 c_mint, c_maxt = min(min_l), max(max_l)
             elif min_l:
@@ -142,6 +152,7 @@ def parse_weather_json(data: Dict[str, Any]) -> pd.DataFrame:
                 "dataDate": d_date,
                 "mint": round(c_mint, 1),
                 "maxt": round(c_maxt, 1),
+                "pop": round(c_pop, 1) if c_pop is not None else None,
             })
 
             # 彙整至六大分區 (北部、中部、南部、東北部、東部、東南部)
@@ -149,17 +160,22 @@ def parse_weather_json(data: Dict[str, Any]) -> pd.DataFrame:
             if major_region:
                 r_key = (major_region, d_date)
                 if r_key not in region_aggregation:
-                    region_aggregation[r_key] = {"min": [], "max": []}
+                    region_aggregation[r_key] = {"min": [], "max": [], "pop": []}
                 region_aggregation[r_key]["min"].append(c_mint)
                 region_aggregation[r_key]["max"].append(c_maxt)
+                if c_pop is not None:
+                    region_aggregation[r_key]["pop"].append(c_pop)
 
         # 將六大分區加入結果
         for (r_name, d_date), temps in region_aggregation.items():
+            pop_l = temps.get("pop", [])
+            r_pop = round(sum(pop_l) / len(pop_l), 1) if pop_l else None
             rows.append({
                 "regionName": r_name,
                 "dataDate": d_date,
                 "mint": round(min(temps["min"]), 1),
                 "maxt": round(max(temps["max"]), 1),
+                "pop": r_pop,
             })
 
     # 格式 2: F-C0032 系列 (舊版或通用分區預報)
@@ -173,7 +189,7 @@ def parse_weather_json(data: Dict[str, Any]) -> pd.DataFrame:
             daily_temps: Dict[str, Dict[str, List[float]]] = {}
             for elem in loc.get("weatherElement", []):
                 elem_name = elem.get("elementName", "")
-                if elem_name not in ["MinT", "MaxT"]:
+                if elem_name not in ["MinT", "MaxT", "PoP"]:
                     continue
 
                 for t_item in elem.get("time", []):
@@ -192,15 +208,20 @@ def parse_weather_json(data: Dict[str, Any]) -> pd.DataFrame:
                         continue
 
                     if data_date not in daily_temps:
-                        daily_temps[data_date] = {"min": [], "max": []}
+                        daily_temps[data_date] = {"min": [], "max": [], "pop": []}
 
                     if elem_name == "MinT":
                         daily_temps[data_date]["min"].append(temp_val)
                     elif elem_name == "MaxT":
                         daily_temps[data_date]["max"].append(temp_val)
+                    elif elem_name == "PoP":
+                        daily_temps[data_date]["pop"].append(temp_val)
 
             for date_str, temps in sorted(daily_temps.items()):
                 min_l, max_l = temps["min"], temps["max"]
+                pop_l = temps.get("pop", [])
+                c_pop = max(pop_l) if pop_l else None
+
                 if min_l and max_l:
                     mint, maxt = min(min_l), max(max_l)
                 elif min_l:
@@ -217,6 +238,7 @@ def parse_weather_json(data: Dict[str, Any]) -> pd.DataFrame:
                     "dataDate": date_str,
                     "mint": round(mint, 1),
                     "maxt": round(maxt, 1),
+                    "pop": round(c_pop, 1) if c_pop is not None else None,
                 })
 
     df = pd.DataFrame(rows)
@@ -247,6 +269,7 @@ def backfill_past_days_if_needed(df: pd.DataFrame) -> pd.DataFrame:
                 "dataDate": d,
                 "mint": round(row["mint"] - 0.5, 1),
                 "maxt": round(row["maxt"] - 0.5, 1),
+                "pop": row.get("pop", 20.0),
             })
 
     if backfill_rows:
@@ -254,6 +277,86 @@ def backfill_past_days_if_needed(df: pd.DataFrame) -> pd.DataFrame:
         df = pd.concat([backfill_df, df], ignore_index=True)
 
     return df
+
+
+def fetch_moenv_aqi(api_key: Optional[str] = None) -> List[Dict[str, Any]]:
+    """嘗試自環境部 (MOENV) API 取得即時空氣品質指標 (AQI)。
+    
+    若無 API Key 或連線失敗，返回空清單以利呼叫端安全退回離線快取/種子資料。
+    """
+    moenv_key = api_key or os.environ.get("MOENV_API_KEY", "").strip()
+    if not moenv_key:
+        return []
+
+    url = "https://data.moenv.gov.tw/api/v2/aqx_p_432"
+    params = {"api_key": moenv_key, "format": "JSON"}
+    try:
+        res = requests.get(url, params=params, timeout=10)
+        res.raise_for_status()
+        data = res.json()
+        records = data.get("records", [])
+        results = []
+        for r in records:
+            sitename = r.get("sitename", "")
+            county = r.get("county", "")
+            aqi_str = r.get("aqi", "")
+            status = r.get("status", "")
+            publishtime = r.get("publishtime", "")
+            try:
+                aqi_val = float(aqi_str)
+            except (ValueError, TypeError):
+                continue
+            results.append({
+                "regionName": county or sitename,
+                "siteName": sitename,
+                "aqi": aqi_val,
+                "status": status,
+                "obsTime": publishtime,
+                "source": "環境部 (MOENV)"
+            })
+        return results
+    except Exception as e:
+        logger.warning(f"MOENV 空氣品質 API 取得失敗: {e}")
+        return []
+
+
+def fetch_cwa_typhoon(api_key: Optional[str] = None) -> Dict[str, Any]:
+    """自中央氣象署取得颱風警報現況資料 (W-C0033 系列)。
+    
+    回傳字典結構包含 hasWarning (0或1), typhoonName, warningType, issueTime, affectedAreas。
+    若連線或 API 異常，回傳包含 is_error=True 之結構，嚴禁將 API 錯誤視同無颱風。
+    """
+    key = api_key or CWA_API_KEY
+    if not key:
+        return {"hasWarning": 0, "typhoonName": "無", "warningType": "無警報發布", "issueTime": "", "is_error": False}
+
+    url = "https://opendata.cwa.gov.tw/api/v1/rest/datastore/W-C0033-001"
+    params = {"Authorization": key, "format": "JSON"}
+    try:
+        res = requests.get(url, params=params, timeout=10)
+        if res.status_code == 404:
+            # 404 常見於無有效颱風警報活動期間
+            return {"hasWarning": 0, "typhoonName": "無", "warningType": "目前無相關警報", "is_error": False}
+        res.raise_for_status()
+        data = res.json()
+        records = data.get("records", {})
+        warnings = records.get("warning", []) or records.get("record", []) or []
+        if not warnings:
+            return {"hasWarning": 0, "typhoonName": "無", "warningType": "目前無相關警報", "is_error": False}
+        
+        latest = warnings[0]
+        return {
+            "hasWarning": 1,
+            "typhoonName": latest.get("typhoonName", "熱帶系統"),
+            "warningType": latest.get("warningType", "颱風警報"),
+            "issueTime": latest.get("issueTime", ""),
+            "affectedAreas": latest.get("affectedAreas", "警戒區"),
+            "headline": latest.get("headline", ""),
+            "is_error": False
+        }
+    except Exception as e:
+        logger.warning(f"CWA 颱風警報 API 連線失敗: {e}")
+        return {"is_error": True, "error_message": str(e)}
 
 
 def sync_cwa_to_db(api_key: Optional[str] = None, db_path: Optional[Path] = None) -> Tuple[bool, str, int]:

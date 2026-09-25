@@ -18,7 +18,7 @@ if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
 try:
-    from src.config import REGION_COORDINATES, DB_PATH
+    from src.config import REGION_COORDINATES, DB_PATH, COUNTY_TO_REGION
     from src.db import (
         get_connection,
         init_db,
@@ -26,41 +26,53 @@ try:
         get_forecasts_by_region,
         get_all_forecasts,
         get_metadata,
-        seed_mock_data
+        set_metadata,
+        seed_mock_data,
+        get_air_quality,
+        get_latest_typhoon_warning,
+    )
+    from src.lifestyle import (
+        evaluate_umbrella_advice,
+        evaluate_air_quality_advice,
+        evaluate_typhoon_advice,
     )
 except ImportError:
-    # 備用容錯定義
     REGION_COORDINATES = {}
+    COUNTY_TO_REGION = {}
     DB_PATH = BASE_DIR / "data" / "data.db"
 
 
-def get_weather_payload(selected_region: str = None) -> dict:
-    """組織天氣預報資料與地圖定位點"""
-    # 確保資料庫存在與初始化
-    db_file = DB_PATH
-    if not db_file.exists():
-        try:
-            init_db()
-            seed_mock_data()
-        except Exception:
-            pass
+def get_weather_payload(selected_region: str = None, selected_date: str = None) -> dict:
+    """組織天氣預報資料、地圖定位點與三張生活建議卡片。"""
+    from datetime import datetime
 
-    # 讀取可用地區清單
+    # 確保資料庫存在與初始化
+    init_db()
+
+    # 讀取可用地區清單，若空則自動播種示範資料
     try:
         regions = get_distinct_regions()
+        if not regions:
+            seed_mock_data()
+            regions = get_distinct_regions()
     except Exception:
         regions = []
 
     # 預設優先選擇
     default_priority = ["臺北市", "台北市", "北部地區", "新北市", "臺中市", "高雄市"]
     if not selected_region or selected_region not in regions:
-        selected_region = None
-        for pref in default_priority:
-            if pref in regions:
-                selected_region = pref
-                break
-        if not selected_region and regions:
-            selected_region = regions[0]
+        # 若傳入縣市但資料庫僅有分區 (或相反)，透過對應表查找
+        fallback_mapped = COUNTY_TO_REGION.get(selected_region) if selected_region else None
+        if fallback_mapped and fallback_mapped in regions:
+            selected_region = fallback_mapped
+        else:
+            selected_region = None
+            for pref in default_priority:
+                if pref in regions:
+                    selected_region = pref
+                    break
+            if not selected_region and regions:
+                selected_region = regions[0]
 
     # 讀取所選地區的 7 天預報
     selected_forecasts = []
@@ -116,19 +128,93 @@ def get_weather_payload(selected_region: str = None) -> dict:
                 "avg": 27.0,
             })
 
-    # 取得最後同步時間
+    # 取得最後同步時間 (修正固定過期時間問題)
     try:
-        last_sync = get_metadata("last_sync_time") or "2026-09-23 11:17:26"
+        last_sync = get_metadata("last_sync_time")
+        if not last_sync:
+            last_sync = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            set_metadata("last_sync_time", last_sync)
     except Exception:
-        last_sync = "2026-09-23 11:17:26"
+        last_sync = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # -------------------------------------------------------------------------
+    # 生活建議卡片計算 (雨量/帶傘、空氣品質/口罩、颱風資訊/物資)
+    # -------------------------------------------------------------------------
+    # 1. 雨量／降雨預報（帶傘建議）
+    target_row = None
+    today_str = datetime.now().strftime("%Y-%m-%d")
+
+    if selected_date:
+        for r in selected_forecasts:
+            if r.get("dataDate") == selected_date:
+                target_row = r
+                break
+    else:
+        # 優先尋找今日或第一筆
+        for r in selected_forecasts:
+            if r.get("dataDate") == today_str:
+                target_row = r
+                break
+        if not target_row and selected_forecasts:
+            target_row = selected_forecasts[0]
+
+    if target_row:
+        umbrella_advice = evaluate_umbrella_advice(
+            pop=target_row.get("pop"),
+            date_str=target_row.get("dataDate", ""),
+            region_name=selected_region or ""
+        )
+    else:
+        umbrella_advice = evaluate_umbrella_advice(
+            pop=None,
+            date_str=selected_date or today_str,
+            region_name=selected_region or ""
+        )
+
+    # 2. 空氣品質（口罩建議）
+    try:
+        aq_record = get_air_quality(selected_region or "")
+    except Exception:
+        aq_record = None
+
+    if aq_record:
+        air_quality_advice = evaluate_air_quality_advice(
+            aqi=aq_record.get("aqi"),
+            site_name=aq_record.get("siteName", ""),
+            obs_time=aq_record.get("obsTime", ""),
+            is_forecast=False,
+            region_name=selected_region or ""
+        )
+    else:
+        air_quality_advice = evaluate_air_quality_advice(
+            aqi=None,
+            region_name=selected_region or ""
+        )
+
+    # 3. 颱風資訊（物資建議）
+    try:
+        ty_record = get_latest_typhoon_warning()
+    except Exception:
+        ty_record = None
+
+    typhoon_advice = evaluate_typhoon_advice(
+        ty_record,
+        region_name=selected_region or ""
+    )
 
     return {
         "status": "success",
         "last_sync": last_sync,
         "selected_region": selected_region,
+        "selected_date": target_row.get("dataDate") if target_row else selected_date,
         "regions": regions,
         "selected_forecasts": selected_forecasts,
         "map_points": map_points,
+        "lifestyle_advice": {
+            "umbrella": umbrella_advice,
+            "air_quality": air_quality_advice,
+            "typhoon": typhoon_advice,
+        },
         "total_records": len(all_forecasts)
     }
 
@@ -150,13 +236,30 @@ class handler(BaseHTTPRequestHandler):
         query_params = parse_qs(parsed_url.query)
 
         region = query_params.get("region", [None])[0]
+        date = query_params.get("date", [None])[0]
         sync_requested = query_params.get("sync", ["0"])[0] in ["1", "true"]
 
         sync_result = None
         if sync_requested:
             try:
-                from src.fetch_data import sync_cwa_to_db
+                from src.fetch_data import sync_cwa_to_db, fetch_moenv_aqi, fetch_cwa_typhoon
+                from src.db import save_air_quality, save_typhoon_warning
                 success, msg, saved = sync_cwa_to_db()
+                # 同步空品
+                try:
+                    moenv_records = fetch_moenv_aqi()
+                    if moenv_records:
+                        save_air_quality(moenv_records)
+                except Exception:
+                    pass
+                # 同步颱風
+                try:
+                    typhoon_data = fetch_cwa_typhoon()
+                    if typhoon_data:
+                        save_typhoon_warning(typhoon_data)
+                except Exception:
+                    pass
+
                 if success:
                     sync_result = f"已成功更新 {saved} 筆氣象資料"
                 else:
@@ -164,9 +267,8 @@ class handler(BaseHTTPRequestHandler):
             except Exception as e:
                 sync_result = f"同步發生錯誤: {str(e)}"
 
-
         try:
-            payload = get_weather_payload(region)
+            payload = get_weather_payload(region, date)
             if sync_result:
                 payload["sync_message"] = sync_result
 
